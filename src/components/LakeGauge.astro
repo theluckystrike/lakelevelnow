@@ -1,0 +1,86 @@
+---
+// LakeGauge — the live reading, above the fold. Server-rendered SVG (no client JS):
+// a reservoir-fill ring whose arc = percent full, plus a 30-day sparkline trend.
+// Color-blind safe: tone + a status word, never color alone.
+import type { LakeEntry, Reading } from '../lib/lakes';
+import { status, fmtNum } from '../lib/lakes';
+
+interface Props { lake: LakeEntry; reading: Reading }
+const { lake, reading } = Astro.props;
+
+const hasPct = reading.pct_full != null;
+const pct = hasPct ? (reading.pct_full as number) : null;
+const st = status(pct);
+
+// Ring arc geometry (radius 52, rotated -90 so it fills from top).
+const R = 52, C = 2 * Math.PI * R;
+const arc = hasPct ? Math.max(0, Math.min(100, pct as number)) / 100 : 0;
+const offset = C * (1 - arc);
+const toneVar = st.tone === 'green' ? 'var(--green)' : st.tone === 'cyan' ? 'var(--cyan)' : st.tone === 'amber' ? 'var(--amber)' : 'var(--red)';
+
+// Sparkline from the 30-day series (values may be elevation-ft or storage-AF; either way, trend is the point).
+const series = (reading.series || []).map((s) => s.v).filter((v) => Number.isFinite(v));
+const W = 600, H = 130, P = 18;
+let spark = '';
+if (series.length >= 2) {
+  const min = Math.min(...series), max = Math.max(...series);
+  const sx = (i: number) => P + (i * (W - 2 * P)) / (series.length - 1);
+  const sy = (v: number) => H - P - ((v - min) / (max - min || 1)) * (H - 2 * P);
+  let line = '';
+  series.forEach((v, i) => { line += `${i ? 'L' : 'M'}${sx(i).toFixed(1)} ${sy(v).toFixed(1)} `; });
+  const area = `M${P} ${H - P} ${line.replace(/^M/, 'L')}L${W - P} ${H - P} Z`;
+  const lastX = sx(series.length - 1).toFixed(1), lastY = sy(series[series.length - 1]).toFixed(1);
+  spark = `
+    <defs><linearGradient id="spk" x1="0" x2="0" y1="0" y2="1">
+      <stop offset="0" stop-color="rgba(76,201,230,.30)"/><stop offset="1" stop-color="rgba(76,201,230,0)"/>
+    </linearGradient></defs>
+    <path d="${area}" fill="url(#spk)"/>
+    <path d="${line}" fill="none" stroke="var(--cyan)" stroke-width="2"/>
+    <circle cx="${lastX}" cy="${lastY}" r="3.5" fill="var(--cyan)"/>
+    <text x="${P}" y="13" style="font:600 10px var(--mono)" fill="var(--mut)">${fmtNum(max, max > 1000 ? 0 : 1)}</text>
+    <text x="${P}" y="${H - 5}" style="font:600 10px var(--mono)" fill="var(--mut)">${fmtNum(min, min > 1000 ? 0 : 1)}</text>
+    <text x="${W - P}" y="${H - 5}" text-anchor="end" style="font:600 10px var(--mono)" fill="var(--mut)">now</text>`;
+}
+
+const asOf = reading.as_of ? new Date(reading.as_of).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : '';
+const feedClass = reading.feed === 'USGS' ? 'usgs' : '';
+const deltaUp = (reading.delta_24h ?? 0) >= 0;
+---
+<div class="lake-hero">
+  <div class="gauge">
+    <div class="ring">
+      <svg viewBox="0 0 120 120" width="190" height="190" role="img" aria-label={hasPct ? `${lake.name} is ${pct}% full` : `${lake.name} elevation ${fmtNum(reading.level_ft,1)} feet`}>
+        <circle cx="60" cy="60" r={R} fill="none" stroke="var(--line)" stroke-width="11" />
+        <circle cx="60" cy="60" r={R} fill="none" stroke={toneVar} stroke-width="11" stroke-linecap="round"
+          stroke-dasharray={C} stroke-dashoffset={offset} transform="rotate(-90 60 60)" />
+      </svg>
+      <div class="pct">
+        {hasPct ? <>{pct}<span style="font-size:20px">%</span><div class="lab">full</div></> : <>{fmtNum(reading.level_ft, 1)}<div class="lab">{reading.param.includes('gage') ? 'gage ft' : 'ft msl'}</div></>}
+      </div>
+    </div>
+    <div class="sub">{hasPct ? `${fmtNum(reading.storage_af, 0)} acre-ft stored` : 'elevation reading'}</div>
+    <div class="src-line">
+      <span class={`src-badge ${feedClass}`}>{reading.feed}</span>
+      <span>updated {asOf}{reading.fresh ? '' : ' · may be delayed'}</span>
+    </div>
+  </div>
+
+  <div class="stat">
+    {hasPct && <div class="cell"><div class="v">{pct}%</div><div class="l">percent full</div></div>}
+    {reading.level_ft != null && <div class="cell"><div class="v">{fmtNum(reading.level_ft, 1)}<span class="mut" style="font-size:.8rem"> ft</span></div><div class="l">{reading.param.includes('gage') ? 'gage height' : 'water level (ft msl)'}</div></div>}
+    {reading.feet_from_full != null && <div class="cell"><div class={`v s ${reading.feet_from_full > 0 ? 'down' : 'up'}`}>{fmtNum(Math.abs(reading.feet_from_full), 1)} ft</div><div class="l">{reading.feet_from_full > 0 ? 'below full pool' : 'above full pool'}</div></div>}
+    {reading.delta_24h != null && <div class="cell"><div class={`v s ${deltaUp ? 'up' : 'down'}`}>{deltaUp ? '+' : ''}{fmtNum(reading.delta_24h, 2)} ft</div><div class="l">24-hour change</div></div>}
+    {lake.full_pool_ft != null && <div class="cell"><div class="v s">{fmtNum(lake.full_pool_ft, 0)} ft</div><div class="l">full pool (ref.)</div></div>}
+    {lake.capacity_af != null && <div class="cell"><div class="v s">{fmtNum(lake.capacity_af, 0)}</div><div class="l">capacity (acre-ft)</div></div>}
+    <div class="cell" style="grid-column:1/-1">
+      <span class={`pill ${st.tone}`}>{st.label}</span>
+    </div>
+  </div>
+</div>
+
+{series.length >= 2 && (
+  <div class="chartcard">
+    <h3>~30-day trend · {reading.param}</h3>
+    <svg class="spark" viewBox={`0 0 ${W} ${H}`} preserveAspectRatio="none" set:html={spark} />
+  </div>
+)}

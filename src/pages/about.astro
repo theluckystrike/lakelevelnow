@@ -1,0 +1,50 @@
+---
+import BaseLayout from '../layouts/BaseLayout.astro';
+import { SITE, FRESH_DAYS } from '../consts';
+import { breadcrumbLd } from '../lib/seo';
+
+const title = 'About & data sources';
+const description = `How ${SITE.name} gets its lake-level data, how percent-full is computed, the freshness policy, and the data-source list (USGS, CDEC).`;
+const ld = [breadcrumbLd([{ name: 'Home', path: '/' }, { name: 'About', path: '/about' }])];
+---
+<BaseLayout title={title} description={description} path="/about" jsonLd={ld}>
+  <div class="container">
+    <article class="prose">
+      <h1>About {SITE.name}</h1>
+      <p>{SITE.name} shows the current water level and percent full for US lakes and reservoirs, pulled straight from
+      public water-data feeds — not scraped from other websites. The goal is a single, fast, honest place to see how full
+      a lake is right now, how it's trending, and whether you can realistically launch a boat.</p>
+
+      <h2 id="data-sources">Where the data comes from</h2>
+      <p>Each lake's reading comes from its own authoritative feed:</p>
+      <ul>
+        <li><b>USGS Water Services</b> — thousands of US gages (gage height and reservoir elevation). Free, keyless, updates as often as every 15–60 minutes.</li>
+        <li><b>CDEC (California Data Exchange)</b> — California reservoir storage and elevation, daily. Used for Shasta, Oroville, Folsom, Berryessa, and the other CA reservoirs.</li>
+      </ul>
+      <p class="mut">Additional feeds (LCRA HydroMet for the Texas Highland Lakes, USBR for Mead/Powell, USACE district data) are wired in as the registry grows.</p>
+
+      <h2 id="methodology">How we compute things</h2>
+      <ul>
+        <li><b>Percent full</b> = current storage (acre-feet) &divide; the reservoir's published full capacity, as a percentage. Where only elevation is available, we show elevation in feet above mean sea level and feet below full pool instead.</li>
+        <li><b>Feet below full pool</b> = full-pool elevation &minus; current elevation. Positive means the lake is below full; negative means above (during flood pools).</li>
+        <li><b>24-hour change</b> = difference between the two most recent readings in the series.</li>
+        <li><b>~30-day trend</b> = the sparkline of the last ~30 daily/instantaneous readings.</li>
+      </ul>
+
+      <h2 id="freshness">Freshness policy (why a reading may say "delayed")</h2>
+      <p>A reading is shown as live only if it is within {FRESH_DAYS} days. If a gage hasn't reported recently, {SITE.name}
+      flags it "may be delayed" rather than pass an old number off as current. Lakes whose feed isn't yet wired show
+      reference data and a note — never a fabricated level.</p>
+
+      <h2 id="accuracy">Accuracy &amp; your responsibility</h2>
+      <p>These are point-in-time readings from public feeds; they can lag real conditions, and reservoir operators can
+      change releases and gate operations at any time. Percent-full is a guide computed from published capacities.
+      Always confirm current ramp status, hazards, and conditions with the lake operator
+      (USACE, USBR, the state agency, or local authority) before you go on the water. {SITE.name} is not affiliated with
+      any government agency.</p>
+
+      <h2 id="contact">Contact</h2>
+      <p>Spot a wrong gage, a mislabeled lake, or a feed you'd like added? Email <a href={`mailto:${SITE.contactEmail}`}>{SITE.contactEmail}</a>.</p>
+    </article>
+  </div>
+</BaseLayout>

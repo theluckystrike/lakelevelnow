@@ -1,0 +1,18 @@
+---
+// Sticky top navigation.
+import { SITE } from '../consts';
+---
+<header class="site-header">
+  <div class="container">
+    <a class="brand" href="/" aria-label={`${SITE.name} home`}>
+      <img src="/favicon.svg" alt="" width="28" height="28" />
+      Lake<span>Level</span>Now
+    </a>
+    <nav class="main" aria-label="Primary">
+      <a href="/">Live lakes</a>
+      <a href="/lakes">All lakes</a>
+      <a href="/lakes#CA">California</a>
+      <a href="/about">About &amp; data</a>
+    </nav>
+  </div>
+</header>

@@ -1,0 +1,5 @@
+User-agent: *
+Allow: /
+
+# All pages are public, indexable lake-level pages and guides.
+Sitemap: https://lakelevelnow.com/sitemap-index.xml

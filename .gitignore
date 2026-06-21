@@ -1,0 +1,23 @@
+# build output
+dist/
+.astro/
+
+# deps
+node_modules/
+
+# env / secrets
+.env
+.env.*
+!.env.example
+
+# data — refreshable outputs from the weekly pipeline.
+# History + index-scores are committed (they are the time-series / moat asset); live
+# rate seed is committed but overwritten each run. Uncomment to ignore if you
+# regenerate on build instead.
+# src/data/index-scores.json
+
+# misc
+.DS_Store
+*.log
+npm-debug.log*
+.wrangler/

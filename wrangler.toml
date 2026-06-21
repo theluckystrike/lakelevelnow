@@ -1,0 +1,21 @@
+# Cloudflare Workers (Static Assets) configuration for lakelevelnow.com.
+# Workers Static Assets serves dist/ at the edge with no per-project cap.
+#
+# Deploy:  npx wrangler@4.80.0 deploy        (Node 20-compatible pin)
+# The assets-only Worker needs no script; _headers and _redirects in dist/ are honored.
+
+name = "lakelevelnow"
+compatibility_date = "2026-06-19"
+
+# Serve at the apex + www. Uncomment AFTER the lakelevelnow.com zone exists on
+# Cloudflare AND the Porkbun nameservers have been pointed at Cloudflare (zone Active).
+# `wrangler deploy` then binds these as Worker custom domains + auto-creates DNS.
+# Until then, deploy serves on the *.workers.dev preview URL.
+# routes = [
+#   { pattern = "lakelevelnow.com", custom_domain = true },
+#   { pattern = "www.lakelevelnow.com", custom_domain = true },
+# ]
+
+[assets]
+directory = "./dist"
+not_found_handling = "404-page"

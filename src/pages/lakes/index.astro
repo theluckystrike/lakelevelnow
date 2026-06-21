@@ -1,0 +1,48 @@
+---
+import BaseLayout from '../../layouts/BaseLayout.astro';
+import { SITE } from '../../consts';
+import { LAKES, byState, getReading, status, fmtNum, stateName } from '../../lib/lakes';
+import { breadcrumbLd } from '../../lib/seo';
+
+const title = 'All lakes — directory';
+const description = `Every lake and reservoir ${SITE.name} tracks, with current level and percent full where a live gage is wired. Browse by state.`;
+const states = byState();
+const ld = [breadcrumbLd([{ name: 'Home', path: '/' }, { name: 'Lakes', path: '/lakes' }])];
+const liveCount = LAKES.filter((l) => getReading(l.slug)?.fresh).length;
+---
+<BaseLayout title={title} description={description} path="/lakes" jsonLd={ld}>
+  <div class="container">
+    <section class="hero" style="padding-bottom:0">
+      <h1>All lakes</h1>
+      <p class="lead">{LAKES.length} lakes in the registry · {liveCount} with a live reading right now. Lakes without a live gage yet still show their reference data and are activated as feeds are wired.</p>
+    </section>
+
+    {Object.entries(states)
+      .sort((a, b) => stateName(a[0]).localeCompare(stateName(b[0])))
+      .map(([code, lakes]) => (
+        <section class="section" id={code} style="padding-top:24px">
+          <h2>{stateName(code)} <span class="mut" style="font-size:.7em">({lakes.length})</span></h2>
+          <div class="table-wrap">
+            <table>
+              <thead><tr><th>Lake</th><th>River</th><th>Operator</th><th class="num">Level</th><th>Status</th></tr></thead>
+              <tbody>
+                {lakes.map((l) => {
+                  const r = getReading(l.slug); const live = !!(r && r.fresh);
+                  const st = status(r?.pct_full ?? null);
+                  return (
+                    <tr>
+                      <td><a href={`/lake/${l.slug}`}><b>{l.name}</b></a></td>
+                      <td>{l.river}</td>
+                      <td>{l.operator}</td>
+                      <td class="num">{live ? (r!.pct_full != null ? `${r!.pct_full}%` : `${fmtNum(r!.level_ft,1)} ft`) : '—'}</td>
+                      <td>{live ? <span class={`pill ${st.tone}`}>{st.label}</span> : <span class="mut" style="font-size:.82rem">feed pending</span>}</td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        </section>
+      ))}
+  </div>
+</BaseLayout>

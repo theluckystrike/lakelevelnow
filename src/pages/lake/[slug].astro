@@ -1,0 +1,114 @@
+---
+import BaseLayout from '../../layouts/BaseLayout.astro';
+import LakeGauge from '../../components/LakeGauge.astro';
+import { SITE, AFFILIATES } from '../../consts';
+import { LAKES, getReading, launchRead, status, fmtNum, stateName } from '../../lib/lakes';
+import { lakeLd, faqLd, breadcrumbLd } from '../../lib/seo';
+
+export function getStaticPaths() {
+  return LAKES.map((l) => ({ params: { slug: l.slug } }));
+}
+
+const { slug } = Astro.params;
+const lake = LAKES.find((l) => l.slug === slug)!;
+const reading = getReading(slug);
+const live = !!(reading && reading.fresh);
+const launch = launchRead(reading);
+
+const stName = stateName(lake.state);
+const levelPhrase = reading?.pct_full != null ? `${reading.pct_full}% full` : (reading?.level_ft != null ? `at ${fmtNum(reading.level_ft,1)} ft` : 'current water level');
+
+const title = `${lake.name} water level — ${live ? levelPhrase : 'live level & percent full'}`;
+const description = `${lake.name} (${lake.river}, ${stName}) water level and percent full${live ? ` — ${levelPhrase} now` : ''}. Live level gauge, 30-day trend, and a plain-English read on whether you can launch a boat. Operated by ${lake.operator}.`;
+
+const faqs = [
+  { q: `How full is ${lake.name} right now?`, a: live
+      ? (reading!.pct_full != null ? `${lake.name} is about ${reading!.pct_full}% full as of ${new Date(reading!.as_of).toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'})}.` : `The most recent reading puts ${lake.name} at ${fmtNum(reading!.level_ft,1)} feet${reading!.feet_from_full!=null?`, ${fmtNum(Math.abs(reading!.feet_from_full),1)} ft ${reading!.feet_from_full>0?'below':'above'} full pool`:''}.`)
+      : `${lake.name}'s live gage is being connected to ${SITE.name}. Full-pool reference is ${lake.full_pool_ft!=null?fmtNum(lake.full_pool_ft,0)+' ft':'listed on the operator page'}; check the operator (${lake.operator}) for the current figure.` },
+  { q: `Can I launch a boat at ${lake.name}?`, a: `${launch.text} This is a level-based read; individual ramps open and close on their own schedules and on local hazards.` },
+  { q: `Where does ${lake.name}'s level come from?`, a: `${SITE.name} pulls it from the ${reading?.feed || 'operator'} public water-data feed (${reading?.feed === 'CDEC' ? 'California Data Exchange' : 'USGS Water Services'}). The reading is timestamped in the gauge above.` },
+  { q: `Who operates ${lake.name}?`, a: `${lake.name}, on the ${lake.river}, is operated by ${lake.operator}. Reservoir releases, flood-control drawdowns, and water-supply decisions are theirs.` },
+];
+
+const ld = [
+  lakeLd({ name: lake.name, path: `/lake/${slug}`, state: stName, river: lake.river,
+    levelFt: reading?.level_ft ?? null, pctFull: reading?.pct_full ?? null, asOf: reading?.as_of }),
+  faqLd(faqs),
+  breadcrumbLd([{ name: 'Home', path: '/' }, { name: 'Lakes', path: '/lakes' }, { name: lake.name, path: `/lake/${slug}` }]),
+];
+
+const related = LAKES.filter((l) => l.state === lake.state && l.slug !== slug).slice(0, 6);
+const affilWired = Object.values(AFFILIATES).some((v) => v !== 'REPLACE_ME');
+---
+<BaseLayout title={title} description={description} path={`/lake/${slug}`} jsonLd={ld}>
+  <div class="container">
+    <p class="mut" style="margin:18px 0 2px;font-size:.85rem"><a href="/">Home</a> · <a href="/lakes">Lakes</a> · <a href={`/lakes#${lake.state}`}>{stName}</a></p>
+    <h1>{lake.name} water level</h1>
+    <p class="dim" style="margin-bottom:6px">{lake.river} · {stName} · operated by {lake.operator}</p>
+
+    {live ? (
+      <LakeGauge lake={lake} reading={reading!} />
+    ) : (
+      <div class="callout a" style="margin-top:18px">
+        <p><b>Live level feed connecting.</b> {SITE.name} is wiring {lake.name}'s gage
+        ({lake.feed || 'the operator feed'}). Below is the published reference data; for the current figure, see the
+        <a href={reading?.feed === 'CDEC' ? `https://cdec.water.ca.gov/dynamicapp/staMeta?station_id=${lake.cdec_id}` : (lake.usgs_site ? `https://waterdata.usgs.gov/monitoring-location/${lake.usgs_site}/` : '#')}>operator's page</a>.</p>
+      </div>
+    )}
+
+    <div class="ramp" style={live ? '' : 'opacity:.7'}>
+      <span class={`ic ${launch.ok ? 'ok' : 'warn'}`}>{launch.ok ? '✓' : '!'}</span>
+      <span><b>Can I launch?</b> {launch.text}</span>
+    </div>
+
+    <section class="section">
+      <h2>About {lake.name}</h2>
+      <div class="grid cols-3">
+        <div class="card"><h3 class="mut" style="font-size:.72rem;text-transform:uppercase;letter-spacing:.05em">Full pool</h3><div class="num" style="font-size:1.4rem">{lake.full_pool_ft != null ? fmtNum(lake.full_pool_ft,0)+' ft' : '—'}</div></div>
+        <div class="card"><h3 class="mut" style="font-size:.72rem;text-transform:uppercase;letter-spacing:.05em">Capacity</h3><div class="num" style="font-size:1.4rem">{lake.capacity_af != null ? fmtNum(lake.capacity_af,0)+' AF' : '—'}</div></div>
+        <div class="card"><h3 class="mut" style="font-size:.72rem;text-transform:uppercase;letter-spacing:.05em">Dam / operator</h3><div class="num" style="font-size:1rem;font-family:var(--sans)">{lake.operator}</div></div>
+        <div class="card"><h3 class="mut" style="font-size:.72rem;text-transform:uppercase;letter-spacing:.05em">River / basin</h3><div class="num" style="font-size:1rem;font-family:var(--sans)">{lake.river}</div></div>
+        <div class="card"><h3 class="mut" style="font-size:.72rem;text-transform:uppercase;letter-spacing:.05em">State</h3><div class="num" style="font-size:1rem;font-family:var(--sans)">{stName}</div></div>
+        <div class="card"><h3 class="mut" style="font-size:.72rem;text-transform:uppercase;letter-spacing:.05em">Data feed</h3><div class="num" style="font-size:1rem;font-family:var(--sans)">{reading?.feed || lake.feed || '—'}</div></div>
+      </div>
+    </section>
+
+    <div class="affil">
+      <h3>Going to {lake.name}?</h3>
+      {affilWired ? (
+        <>
+          <p>Book a guided fishing trip, rent a boat, or find a charter — partners we earn a commission from at no cost to you.</p>
+          <div class="row">
+            {AFFILIATES.fishingbooker !== 'REPLACE_ME' && <a class="btn" href={AFFILIATES.fishingbooker} rel="sponsored nofollow noopener">Book a fishing charter</a>}
+            {AFFILIATES.captainExperiences !== 'REPLACE_ME' && <a class="btn ghost" href={AFFILIATES.captainExperiences} rel="sponsored nofollow noopener">Guided trips</a>}
+            {AFFILIATES.boatsetter !== 'REPLACE_ME' && <a class="btn ghost" href={AFFILIATES.boatsetter} rel="sponsored nofollow noopener">Rent a boat</a>}
+          </div>
+        </>
+      ) : (
+        <p class="mut">Recreation-booking links (charters, boat rentals) appear here once partner accounts are wired. See <a href="/disclosure">the disclosure page</a>.</p>
+      )}
+    </div>
+
+    <section class="section">
+      <h2>{lake.name} water level — questions</h2>
+      {faqs.map((f) => (
+        <div style="margin-bottom:14px">
+          <h3 style="font-size:1.05rem">{f.q}</h3>
+          <p class="mut" style="margin:4px 0 0">{f.a}</p>
+        </div>
+      ))}
+    </section>
+
+    {related.length > 0 && (
+      <section class="section">
+        <h2>More lakes in {stName}</h2>
+        <div class="state-grid" style="margin-top:12px">
+          {related.map((l) => {
+            const r = getReading(l.slug); const stt = status(r?.pct_full ?? null);
+            return <a href={`/lake/${l.slug}`}><span>{l.name}</span><span class="tag">{r?.fresh ? (r.pct_full!=null?`${r.pct_full}%`:'live') : l.state}</span></a>;
+          })}
+        </div>
+      </section>
+    )}
+  </div>
+</BaseLayout>

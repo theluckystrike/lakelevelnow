@@ -1,11 +1,12 @@
 name: Pages
 
-# Build the static site and publish to GitHub Pages (serves lakelevelnow.com via
-# the apex A-records pointing at GitHub Pages IPs). Runs alongside deploy.yml
-# (the Cloudflare Workers preview). No Cloudflare zone required for the apex.
+# Build + publish to GitHub Pages (serves lakelevelnow.com), then submit to
+# IndexNow once HTTPS is live. Apex A-records point at GitHub Pages IPs.
 on:
   push:
     branches: [main]
+  schedule:
+    - cron: '23 9 * * 1'
   workflow_dispatch: {}
 
 permissions:
@@ -45,3 +46,30 @@ jobs:
     steps:
       - id: deployment
         uses: actions/deploy-pages@v4
+
+  indexnow:
+    needs: deploy
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+      - run: npm ci
+      - name: Wait for HTTPS, then submit IndexNow
+        run: |
+          for i in $(seq 1 30); do
+            code=$(curl -s -o /dev/null -w "%{http_code}" https://lakelevelnow.com/ || echo 000)
+            echo "attempt $i: https=$code"
+            if [ "$code" = "200" ]; then
+              curl -s -X PUT -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
+                -H "Accept: application/vnd.github+json" \
+                https://api.github.com/repos/${{ github.repository }}/pages \
+                -d '{"https_enforced":true}' || true
+              npm run indexnow
+              exit 0
+            fi
+            sleep 30
+          done
+          echo "HTTPS not ready this run; IndexNow retries next push/weekly."

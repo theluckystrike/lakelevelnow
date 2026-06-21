@@ -1,20 +1,10 @@
-# Cloudflare Workers (Static Assets) configuration for lakelevelnow.com.
-# Workers Static Assets serves dist/ at the edge with no per-project cap.
-#
-# Deploy:  npx wrangler@4.80.0 deploy        (Node 20-compatible pin)
-# The assets-only Worker needs no script; _headers and _redirects in dist/ are honored.
-
+# Cloudflare Workers (Static Assets) config for lakelevelnow.com.
+# The apex (lakelevelnow.com) is served by GitHub Pages (Porkbun DNS -> GH Pages IPs).
+# This Worker is a secondary preview on the *.workers.dev URL only (no apex routes —
+# the Cloudflare zone lives in another account and is intentionally not used here).
 name = "lakelevelnow"
 compatibility_date = "2026-06-19"
-
-# Live NOW on the workers.dev preview (workers_dev = true). The apex + www routes
-# below are commented ONLY until the lakelevelnow.com zone is added to this CF
-# account — after which the worker auto-binds them. NS already at Cloudflare.
 workers_dev = true
-# routes = [
-#   { pattern = "lakelevelnow.com", custom_domain = true },
-#   { pattern = "www.lakelevelnow.com", custom_domain = true },
-# ]
 
 [assets]
 directory = "./dist"

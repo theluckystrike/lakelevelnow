@@ -7,14 +7,14 @@
 name = "lakelevelnow"
 compatibility_date = "2026-06-19"
 
-# Serve at the apex + www. `wrangler deploy` binds these as Worker custom domains
-# and auto-creates the DNS records — requires the lakelevelnow.com zone to exist
-# (and be Active) in this Cloudflare account. NS are already at Cloudflare
-# (aron/thaddeus), so once the zone is added it goes Active immediately.
-routes = [
-  { pattern = "lakelevelnow.com", custom_domain = true },
-  { pattern = "www.lakelevelnow.com", custom_domain = true },
-]
+# Live NOW on the workers.dev preview (workers_dev = true). The apex + www routes
+# below are commented ONLY until the lakelevelnow.com zone is added to this CF
+# account — after which the worker auto-binds them. NS already at Cloudflare.
+workers_dev = true
+# routes = [
+#   { pattern = "lakelevelnow.com", custom_domain = true },
+#   { pattern = "www.lakelevelnow.com", custom_domain = true },
+# ]
 
 [assets]
 directory = "./dist"

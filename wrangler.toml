@@ -7,14 +7,14 @@
 name = "lakelevelnow"
 compatibility_date = "2026-06-19"
 
-# Serve at the apex + www. Uncomment AFTER the lakelevelnow.com zone exists on
-# Cloudflare AND the Porkbun nameservers have been pointed at Cloudflare (zone Active).
-# `wrangler deploy` then binds these as Worker custom domains + auto-creates DNS.
-# Until then, deploy serves on the *.workers.dev preview URL.
-# routes = [
-#   { pattern = "lakelevelnow.com", custom_domain = true },
-#   { pattern = "www.lakelevelnow.com", custom_domain = true },
-# ]
+# Serve at the apex + www. `wrangler deploy` binds these as Worker custom domains
+# and auto-creates the DNS records — requires the lakelevelnow.com zone to exist
+# (and be Active) in this Cloudflare account. NS are already at Cloudflare
+# (aron/thaddeus), so once the zone is added it goes Active immediately.
+routes = [
+  { pattern = "lakelevelnow.com", custom_domain = true },
+  { pattern = "www.lakelevelnow.com", custom_domain = true },
+]
 
 [assets]
 directory = "./dist"

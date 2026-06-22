@@ -1,19 +1,19 @@
 ---
 import BaseLayout from '../layouts/BaseLayout.astro';
-import { LAKES, freshLakes } from '../lib/lakes';
-const fresh = freshLakes().slice(0, 6);
+import { freshLakes } from '../lib/lakes';
+const fresh = freshLakes().slice(0, 4);
 ---
-<BaseLayout title="Page not found" description="That lake or page doesn’t exist." path="/404" noindex={true}>
+<BaseLayout title="Page not found" description="That lake or page doesn't exist." path="/404" noindex={true}>
   <div class="container">
     <section class="hero">
       <h1>That page ran dry.</h1>
-      <p class="lead">The lake or page you’re after isn’t here. Try a live lake below, or browse the full directory.</p>
+      <p class="lead">The lake or page you're after isn't here. Try a live lake below, or browse the full directory.</p>
     </section>
-    <div class="grid cols-3" style="margin-top:8px">
+    <div class="grid cols-2" style="margin-top:24px;">
       {fresh.map(({ lake }) => (
-        <a class="card" href={`/lake/${lake.slug}`} style="text-decoration:none;color:inherit"><h3>{lake.name}</h3><p class="mut" style="margin:0">{lake.state} · live level</p></a>
+        <a class="lake-card" href={`/lake/${lake.slug}`}><div class="name">{lake.name}</div><div class="sub">{lake.state} · live level</div></a>
       ))}
     </div>
-    <p style="margin-top:18px"><a class="btn" href="/lakes">Browse all {LAKES.length} lakes</a></p>
+    <div style="margin-top:24px;"><a class="btn" href="/lakes">Browse all lakes</a></div>
   </div>
 </BaseLayout>

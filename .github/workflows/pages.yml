@@ -52,24 +52,15 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
-        with:
-          node-version: '20'
-          cache: 'npm'
-      - run: npm ci
-      - name: Wait for HTTPS, then submit IndexNow
+      - name: Submit to IndexNow (non-blocking — Bing re-verifies on its own schedule)
+        continue-on-error: true
         run: |
-          for i in $(seq 1 30); do
-            code=$(curl -s -o /dev/null -w "%{http_code}" https://lakelevelnow.com/ || echo 000)
-            echo "attempt $i: https=$code"
-            if [ "$code" = "200" ]; then
-              curl -s -X PUT -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
-                -H "Accept: application/vnd.github+json" \
-                https://api.github.com/repos/${{ github.repository }}/pages \
-                -d '{"https_enforced":true}' || true
-              npm run indexnow
-              exit 0
-            fi
-            sleep 30
-          done
-          echo "HTTPS not ready this run; IndexNow retries next push/weekly."
+          KEY=$(cat .indexnow-key)
+          sleep 20
+          curl -fsL https://lakelevelnow.com/sitemap-0.xml | grep -oE 'https://lakelevelnow.com[^<]+' | sort -u > /tmp/urls.txt
+          U=$(sed 's/.*/"&"/' /tmp/urls.txt | paste -sd, -)
+          CODE=$(curl -s -o /tmp/in.json -w "%{http_code}" -X POST -H "Content-Type: application/json" \
+            -d "{\"host\":\"lakelevelnow.com\",\"key\":\"$KEY\",\"keyLocation\":\"https://lakelevelnow.com/$KEY.txt\",\"urlList\":[$U]}" \
+            https://api.indexnow.org/indexnow)
+          echo "IndexNow -> $CODE"
+          head -c 200 /tmp/in.json 2>/dev/null || true

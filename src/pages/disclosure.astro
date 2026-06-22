@@ -10,24 +10,17 @@ const ld = [breadcrumbLd([{ name: 'Home', path: '/' }, { name: 'Disclosure', pat
   <div class="container">
     <article class="prose">
       <h1>Affiliate disclosure</h1>
-      <p>{SITE.name} is a free, independent site. Some links on lake pages are affiliate links, which means if you book
-      a charter, guided trip, or boat rental through them we may earn a commission at no extra cost to you. That keeps
-      the site free and the data updating.</p>
+      <p>{SITE.name} is a free, independent site. Some links on lake pages are affiliate links, which means if you book a charter, guided trip, or boat rental through them we may earn a commission at no extra cost to you. That keeps the site free and the data updating.</p>
 
       <h2>Current status</h2>
       {AFFILIATE_REPLACE_ME ? (
-        <p class="callout a"><b>Affiliate links are not yet active.</b> The recreation-booking buttons on lake pages are
-        placeholders while partner accounts (FishingBooker, Captain Experiences, Boatsetter) are being set up. No
-        commission is earned yet, and no outbound affiliate link is live. This page and the buttons update automatically
-        once tracked links are pasted into <code>src/consts.ts</code>.</p>
+        <div class="callout a"><p><b>Affiliate links are not yet active.</b> The recreation-booking buttons on lake pages are placeholders while partner accounts (FishingBooker, Captain Experiences, Boatsetter) are being set up. No commission is earned yet, and no outbound affiliate link is live. This page and the buttons update automatically once tracked links are pasted into <code>src/consts.ts</code>.</p></div>
       ) : (
         <p>Affiliate links are active on lake pages. Partners: FishingBooker, Captain Experiences, and Boatsetter.</p>
       )}
 
       <h2>Editorial independence</h2>
-      <p>The water-level data is never influenced by affiliate relationships. Readings come from USGS and CDEC public
-      feeds and are shown the same way whether or not a lake page carries affiliate links. Levels and percent-full are
-      not modified to favor any partner.</p>
+      <p>The water-level data is never influenced by affiliate relationships. Readings come from USGS and CDEC public feeds and are shown the same way whether or not a lake page carries affiliate links. Levels and percent-full are not modified to favor any partner.</p>
 
       <p>If you have questions, email <a href={`mailto:${SITE.contactEmail}`}>{SITE.contactEmail}</a>.</p>
     </article>

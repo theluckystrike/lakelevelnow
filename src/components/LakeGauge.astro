@@ -1,9 +1,8 @@
 ---
-// LakeGauge — the live reading, above the fold. Server-rendered SVG (no client JS):
-// a reservoir-fill ring whose arc = percent full, plus a 30-day sparkline trend.
-// Color-blind safe: tone + a status word, never color alone.
+// LakeGauge — the live reading, above the fold. 270° arc gauge + 3×2 stat grid +
+// "Can I launch?" verdict + ~30-day sparkline. Pure server-rendered SVG (no client JS).
 import type { LakeEntry, Reading } from '../lib/lakes';
-import { status, fmtNum } from '../lib/lakes';
+import { launchRead, status, fmtNum } from '../lib/lakes';
 
 interface Props { lake: LakeEntry; reading: Reading }
 const { lake, reading } = Astro.props;
@@ -11,76 +10,96 @@ const { lake, reading } = Astro.props;
 const hasPct = reading.pct_full != null;
 const pct = hasPct ? (reading.pct_full as number) : null;
 const st = status(pct);
+const tone = st.tone === 'green' || st.tone === 'cyan' ? '#0b7d6a' : st.tone === 'amber' ? '#b07d1a' : st.tone === 'red' ? '#bb5a37' : '#8a949a';
 
-// Ring arc geometry (radius 52, rotated -90 so it fills from top).
-const R = 52, C = 2 * Math.PI * R;
-const arc = hasPct ? Math.max(0, Math.min(100, pct as number)) / 100 : 0;
-const offset = C * (1 - arc);
-const toneVar = st.tone === 'green' ? 'var(--green)' : st.tone === 'cyan' ? 'var(--cyan)' : st.tone === 'amber' ? 'var(--amber)' : 'var(--red)';
+// 270° arc gauge geometry (r=80, gap at bottom via rotate(135deg)).
+const R = 80, C = 2 * Math.PI * R, ARC = C * 0.75;
+const fillArc = hasPct ? (Math.max(0, Math.min(100, pct as number)) / 100) * ARC : 0;
+const trackDash = `${ARC} ${C}`;
+const fillDash = `${fillArc} ${C}`;
 
-// Sparkline from the 30-day series (values may be elevation-ft or storage-AF; either way, trend is the point).
-const series = (reading.series || []).map((s) => s.v).filter((v) => Number.isFinite(v));
-const W = 600, H = 130, P = 18;
-let spark = '';
-if (series.length >= 2) {
-  const min = Math.min(...series), max = Math.max(...series);
-  const sx = (i: number) => P + (i * (W - 2 * P)) / (series.length - 1);
-  const sy = (v: number) => H - P - ((v - min) / (max - min || 1)) * (H - 2 * P);
-  let line = '';
-  series.forEach((v, i) => { line += `${i ? 'L' : 'M'}${sx(i).toFixed(1)} ${sy(v).toFixed(1)} `; });
-  const area = `M${P} ${H - P} ${line.replace(/^M/, 'L')}L${W - P} ${H - P} Z`;
-  const lastX = sx(series.length - 1).toFixed(1), lastY = sy(series[series.length - 1]).toFixed(1);
-  spark = `
-    <defs><linearGradient id="spk" x1="0" x2="0" y1="0" y2="1">
-      <stop offset="0" stop-color="rgba(76,201,230,.30)"/><stop offset="1" stop-color="rgba(76,201,230,0)"/>
-    </linearGradient></defs>
-    <path d="${area}" fill="url(#spk)"/>
-    <path d="${line}" fill="none" stroke="var(--cyan)" stroke-width="2"/>
-    <circle cx="${lastX}" cy="${lastY}" r="3.5" fill="var(--cyan)"/>
-    <text x="${P}" y="13" style="font:600 10px var(--mono)" fill="var(--mut)">${fmtNum(max, max > 1000 ? 0 : 1)}</text>
-    <text x="${P}" y="${H - 5}" style="font:600 10px var(--mono)" fill="var(--mut)">${fmtNum(min, min > 1000 ? 0 : 1)}</text>
-    <text x="${W - P}" y="${H - 5}" text-anchor="end" style="font:600 10px var(--mono)" fill="var(--mut)">now</text>`;
-}
-
+const launch = launchRead(reading);
 const asOf = reading.as_of ? new Date(reading.as_of).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : '';
-const feedClass = reading.feed === 'USGS' ? 'usgs' : '';
+
+// Sparkline (~30-day series).
+const series = (reading.series || []).map((s) => s.v).filter((v) => Number.isFinite(v));
+let spark = '', sparkEndY = 100, sparkLo = '', sparkHi = '';
+if (series.length >= 2) {
+  const mn = Math.min(...series), mx = Math.max(...series), rg = (mx - mn) || 1;
+  const W = 100, H = 100;
+  const sx = (i: number) => (i / (series.length - 1)) * W;
+  const sy = (v: number) => H - ((v - mn) / rg) * 80;
+  const line = series.map((v, i) => `${i ? 'L' : 'M'}${sx(i).toFixed(2)},${sy(v).toFixed(2)}`).join(' ');
+  const area = `M0,${H} L${series.map((v, i) => `${sx(i).toFixed(2)},${sy(v).toFixed(2)}`).join(' L')} L${W},${H} Z`;
+  sparkEndY = sy(series[series.length - 1]);
+  spark = `<path d="${area}" fill="${tone}" fill-opacity="0.07"></path><polyline points="${series.map((v, i) => `${sx(i).toFixed(2)},${sy(v).toFixed(2)}`).join(' ')}" fill="none" stroke="${tone}" stroke-width="1.5" vector-effect="non-scaling-stroke" stroke-linejoin="round"></polyline><circle cx="100" cy="${sparkEndY.toFixed(2)}" r="3" fill="${tone}" vector-effect="non-scaling-stroke"></circle>`;
+  sparkLo = fmtNum(mn, mn > 1000 ? 0 : 1);
+  sparkHi = fmtNum(mx, mx > 1000 ? 0 : 1);
+}
 const deltaUp = (reading.delta_24h ?? 0) >= 0;
 ---
+
 <div class="lake-hero">
-  <div class="gauge">
-    <div class="ring">
-      <svg viewBox="0 0 120 120" width="190" height="190" role="img" aria-label={hasPct ? `${lake.name} is ${pct}% full` : `${lake.name} elevation ${fmtNum(reading.level_ft,1)} feet`}>
-        <circle cx="60" cy="60" r={R} fill="none" stroke="var(--line)" stroke-width="11" />
-        <circle cx="60" cy="60" r={R} fill="none" stroke={toneVar} stroke-width="11" stroke-linecap="round"
-          stroke-dasharray={C} stroke-dashoffset={offset} transform="rotate(-90 60 60)" />
-      </svg>
-      <div class="pct">
-        {hasPct ? <>{pct}<span style="font-size:20px">%</span><div class="lab">full</div></> : <>{fmtNum(reading.level_ft, 1)}<div class="lab">{reading.param.includes('gage') ? 'gage ft' : 'ft msl'}</div></>}
-      </div>
+  <!-- Gauge card -->
+  <div class="gauge-card">
+    <svg class="gauge" viewBox="0 0 200 200" role="img" aria-label={hasPct ? `${lake.name} is ${pct}% full` : `${lake.name} level ${fmtNum(reading.level_ft,1)} ft`}>
+      <circle cx="100" cy="100" r={R} fill="none" stroke="#ebe7e0" stroke-width="13" stroke-linecap="round" stroke-dasharray={trackDash} transform="rotate(135 100 100)"></circle>
+      <circle cx="100" cy="100" r={R} fill="none" stroke={tone} stroke-width="13" stroke-linecap="round" stroke-dasharray={fillDash} transform="rotate(135 100 100)" style="animation: gaugeIn 1.2s ease-out;"></circle>
+      {hasPct ? (
+        <>
+          <text x="100" y="92" text-anchor="middle" style="font-family:'Space Grotesk',sans-serif;font-size:48px;font-weight:700;fill:#16282f;letter-spacing:-0.03em;">{pct}</text>
+          <text x="100" y="116" text-anchor="middle" style="font-family:'Space Grotesk',sans-serif;font-size:15px;font-weight:500;fill:#5c6a70;">% full</text>
+        </>
+      ) : (
+        <>
+          <text x="100" y="92" text-anchor="middle" style="font-family:'Space Grotesk',sans-serif;font-size:30px;font-weight:700;fill:#16282f;letter-spacing:-0.03em;">{fmtNum(reading.level_ft,1)}</text>
+          <text x="100" y="116" text-anchor="middle" style="font-family:'Space Grotesk',sans-serif;font-size:13px;font-weight:500;fill:#5c6a70;">ft msl</text>
+        </>
+      )}
+    </svg>
+    <div class="sub-line">
+      <span class={`pill ${st.tone === 'red' ? 'red' : st.tone === 'amber' ? 'amber' : 'green'}`}>{st.label}</span>
+      {reading.feet_from_full != null && <span style="font-size:13px;color:var(--t2);">{fmtNum(Math.abs(reading.feet_from_full),1)} ft {reading.feet_from_full > 0 ? 'below' : 'above'} full pool</span>}
     </div>
-    <div class="sub">{hasPct ? `${fmtNum(reading.storage_af, 0)} acre-ft stored` : 'elevation reading'}</div>
-    <div class="src-line">
-      <span class={`src-badge ${feedClass}`}>{reading.feed}</span>
-      <span>updated {asOf}{reading.fresh ? '' : ' · may be delayed'}</span>
+    <div class="src-foot">
+      <span class="src-badge">{reading.feed}</span>
+      <span style="font-size:11px;color:var(--t3);">{reading.storage_af != null ? `${fmtNum(reading.storage_af,0)} acre-ft · ` : ''}updated {asOf}</span>
     </div>
   </div>
 
-  <div class="stat">
-    {hasPct && <div class="cell"><div class="v">{pct}%</div><div class="l">percent full</div></div>}
-    {reading.level_ft != null && <div class="cell"><div class="v">{fmtNum(reading.level_ft, 1)}<span class="mut" style="font-size:.8rem"> ft</span></div><div class="l">{reading.param.includes('gage') ? 'gage height' : 'water level (ft msl)'}</div></div>}
-    {reading.feet_from_full != null && <div class="cell"><div class={`v s ${reading.feet_from_full > 0 ? 'down' : 'up'}`}>{fmtNum(Math.abs(reading.feet_from_full), 1)} ft</div><div class="l">{reading.feet_from_full > 0 ? 'below full pool' : 'above full pool'}</div></div>}
-    {reading.delta_24h != null && <div class="cell"><div class={`v s ${deltaUp ? 'up' : 'down'}`}>{deltaUp ? '+' : ''}{fmtNum(reading.delta_24h, 2)} ft</div><div class="l">24-hour change</div></div>}
-    {lake.full_pool_ft != null && <div class="cell"><div class="v s">{fmtNum(lake.full_pool_ft, 0)} ft</div><div class="l">full pool (ref.)</div></div>}
-    {lake.capacity_af != null && <div class="cell"><div class="v s">{fmtNum(lake.capacity_af, 0)}</div><div class="l">capacity (acre-ft)</div></div>}
-    <div class="cell" style="grid-column:1/-1">
-      <span class={`pill ${st.tone}`}>{st.label}</span>
-    </div>
+  <!-- Stats grid 3×2 -->
+  <div class="stat-grid">
+    {hasPct && <div class="stat-cell"><div class="v" style={`color:${tone}`}>{pct}%</div><div class="l">percent full</div></div>}
+    {reading.level_ft != null && <div class="stat-cell"><div class="v">{fmtNum(reading.level_ft,1)}</div><div class="l">{reading.param.includes('gage') ? 'gage height (ft)' : 'water level (ft msl)'}</div></div>}
+    {reading.feet_from_full != null && <div class="stat-cell"><div class={`v ${reading.feet_from_full > 0 ? 'down' : 'up'}`}>{fmtNum(Math.abs(reading.feet_from_full),1)}</div><div class="l">{reading.feet_from_full > 0 ? 'ft below full pool' : 'ft above full pool'}</div></div>}
+    {reading.delta_24h != null && <div class="stat-cell"><div class={`v ${deltaUp ? 'up' : 'down'}`}>{deltaUp ? '+' : '−'}{fmtNum(Math.abs(reading.delta_24h),2)}</div><div class="l">24-hour change (ft)</div></div>}
+    {lake.full_pool_ft != null && <div class="stat-cell"><div class="v">{fmtNum(lake.full_pool_ft,0)}</div><div class="l">full pool (ft ref.)</div></div>}
+    {lake.capacity_af != null && <div class="stat-cell"><div class="v">{fmtNum(lake.capacity_af/1e6,2)}M</div><div class="l">capacity (acre-ft)</div></div>}
   </div>
 </div>
 
+<!-- Can I launch? verdict -->
+<div class={`verdict ${launch.ok ? '' : 'warn'}`}>
+  <div class="ic">
+    {launch.ok
+      ? <svg width="18" height="18" viewBox="0 0 18 18" fill="none"><path d="M4 9.5L7.5 13L14 5" stroke="white" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"></path></svg>
+      : <span style="font-size:18px;font-weight:800;line-height:1;">!</span>}
+  </div>
+  <div>
+    <div class="vt">Can I launch? <span class="ok">{launch.ok ? 'Yes — most ramps usable.' : 'Check before you go.'}</span></div>
+    <div class="vb">{launch.text}</div>
+  </div>
+</div>
+
+<!-- Trend -->
 {series.length >= 2 && (
   <div class="chartcard">
-    <h3>~30-day trend · {reading.param}</h3>
-    <svg class="spark" viewBox={`0 0 ${W} ${H}`} preserveAspectRatio="none" set:html={spark} />
+    <div class="ch-head">~30-day trend · {reading.param}</div>
+    <svg class="spark" viewBox="0 0 100 100" preserveAspectRatio="none" set:html={spark} />
+    <div class="ch-foot">
+      <span class="lo">{sparkHi}</span>
+      <span><span class="now">{series[series.length-1] >= 1000 ? fmtNum(series[series.length-1],0) : fmtNum(series[series.length-1],1)}</span> <span style="font-size:11px;font-weight:500;color:var(--t3);">now</span></span>
+      <span class="lo">{sparkLo}</span>
+    </div>
   </div>
 )}

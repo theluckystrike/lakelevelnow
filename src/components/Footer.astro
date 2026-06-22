@@ -1,22 +1,26 @@
 ---
-// Global footer — dark slate, LakeLevelNow wordmark, data attribution, disclaimer.
+// Global footer — dark slate, LakeLevelNow wordmark, zovo.one + GitHub, disclaimer.
 import { SITE, AFFILIATE_REPLACE_ME } from '../consts';
 import { LAKES, freshLakes } from '../lib/lakes';
 const featured = freshLakes().slice(0, 6).map((x) => x.lake);
 const more = LAKES.slice(6, 14);
 const year = new Date().getFullYear();
+const ZOVO = 'https://zovo.one';
+const GH = 'https://github.com/theluckystrike';
 ---
 <footer class="site-footer">
   <div class="container">
     <div class="frow">
       <div>
         <div class="fbrand"><span class="w">Lake</span><span class="b">Level</span><span class="w">Now</span></div>
-        <div class="fdata">Data: USGS Water Services · CDEC</div>
+        <div class="fdata">Built solo · Data: USGS Water Services · CDEC</div>
       </div>
       <div class="flinks">
-        <a href="/about">About &amp; data</a>
+        <a href="/about">About</a>
         <a href="/lakes">All lakes</a>
         <a href="/disclosure">Disclosure</a>
+        <a href={GH} rel="nofollow noopener">GitHub</a>
+        <a href={ZOVO} rel="nofollow noopener">zovo.one</a>
         <a href={`mailto:${SITE.contactEmail}`}>Contact</a>
       </div>
     </div>
@@ -28,6 +32,6 @@ const year = new Date().getFullYear();
         ? ' Recreation-affiliate links appear on lake pages once partner accounts are wired.'
         : ' Some lake-page links are affiliate — see the disclosure page.'}
     </p>
-    <div class="copy">© {SITE.name} {year}</div>
+    <div class="copy">© {SITE.name} {year} · A <a href={ZOVO} rel="nofollow noopener" style="color:rgba(255,255,255,.4);text-decoration:underline;">zovo.one</a> site, built by one developer.</div>
   </div>
 </footer>

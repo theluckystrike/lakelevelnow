@@ -1,12 +1,13 @@
 ---
-// Sticky top navigation.
+// Sticky top navigation — dark slate (#16282f), LakeLevelNow wordmark (teal "Level").
 import { SITE } from '../consts';
+import { LAKES } from '../lib/lakes';
+const liveCount = LAKES.filter((l) => true).length; // registry count
 ---
 <header class="site-header">
   <div class="container">
     <a class="brand" href="/" aria-label={`${SITE.name} home`}>
-      <img src="/favicon.svg" alt="" width="28" height="28" />
-      Lake<span>Level</span>Now
+      <span class="w">Lake</span><span class="b">Level</span><span class="w">Now</span>
     </a>
     <nav class="main" aria-label="Primary">
       <a href="/">Live lakes</a>

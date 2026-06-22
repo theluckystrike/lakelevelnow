@@ -9,7 +9,7 @@ export const SITE = {
   tagline:
     'Live US lake and reservoir water levels — current level, percent full, and trend for lakes across the country, updated from USGS and state feeds.',
   description:
-    'See the current water level and percent full for US lakes and reservoirs — Lake Travis, Shasta, Oroville, Lanier, Mead and more — with a live level gauge, 30-day trend, and a plain-English read on whether you can launch a boat. Data from USGS and CDEC, updated regularly.',
+    'Live US lake and reservoir water levels — percent full, 30-day trend, and a plain-English launch read, from USGS and CDEC gages.',
   defaultOgImage: '/og-default.png',
   // Optional Google Search Console HTML-tag verification token (paste after 'content=').
   gscVerification: '',
@@ -25,7 +25,7 @@ export const AFFILIATES = {
   fishingbooker: 'REPLACE_ME',
   // Captain Experiences: pays per guided trip. Apply: captainexperiences.com/affiliates
   captainExperiences: 'REPLACE_ME',
-  // Boatsetter: ~$16–20 per rental lead. Apply: boatsetter.com/partners
+  // Boatsetter: ~$16–20 per rental lead. Apply: boatsetter/partners
   boatsetter: 'REPLACE_ME',
 } as const;
 

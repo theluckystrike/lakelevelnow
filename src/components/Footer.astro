@@ -1,47 +1,33 @@
 ---
-// Global footer: link columns + the honesty disclaimer.
-import { SITE, AFFILIATES, AFFILIATE_REPLACE_ME } from '../consts';
-import { LAKES } from '../lib/lakes';
-
-// Featured lakes (prefer those with live readings; else high-volume registry entries).
-const featured = LAKES.slice(0, 6);
+// Global footer — dark slate, LakeLevelNow wordmark, data attribution, disclaimer.
+import { SITE, AFFILIATE_REPLACE_ME } from '../consts';
+import { LAKES, freshLakes } from '../lib/lakes';
+const featured = freshLakes().slice(0, 6).map((x) => x.lake);
 const more = LAKES.slice(6, 14);
+const year = new Date().getFullYear();
 ---
 <footer class="site-footer">
   <div class="container">
-    <div class="grid">
+    <div class="frow">
       <div>
-        <h4>Lakes</h4>
-        <ul>
-          <li><a href="/lakes">All lakes</a></li>
-          {featured.map((l) => <li><a href={`/lake/${l.slug}`}>{l.name}</a></li>)}
-        </ul>
+        <div class="fbrand"><span class="w">Lake</span><span class="b">Level</span><span class="w">Now</span></div>
+        <div class="fdata">Data: USGS Water Services · CDEC</div>
       </div>
-      <div>
-        <h4>More lakes</h4>
-        <ul>
-          {more.map((l) => <li><a href={`/lake/${l.slug}`}>{l.name}</a></li>)}
-        </ul>
-      </div>
-      <div>
-        <h4>Site</h4>
-        <ul>
-          <li><a href="/about">About &amp; data sources</a></li>
-          <li><a href="/disclosure">Affiliate disclosure</a></li>
-          <li><a href={`mailto:${SITE.contactEmail}`}>Contact</a></li>
-        </ul>
+      <div class="flinks">
+        <a href="/about">About &amp; data</a>
+        <a href="/lakes">All lakes</a>
+        <a href="/disclosure">Disclosure</a>
+        <a href={`mailto:${SITE.contactEmail}`}>Contact</a>
       </div>
     </div>
     <p class="disclaimer">
       {SITE.name} republishes public water-data from the USGS Water Services and the California Data Exchange (CDEC).
-      Levels are point-in-time readings from those feeds and can lag real conditions; always confirm current ramp and
-      hazard status with the lake operator (USACE, USBR, state agency, or local authority) before you go on the water.
-      Percent-full is computed from reported storage or elevation against each reservoir’s published capacity; treat it
-      as a guide, not an official figure. Not affiliated with any government agency.
+      Levels are point-in-time readings and can lag real conditions; always confirm ramp and hazard status with the
+      lake operator before you go on the water. Not affiliated with any government agency.
       {AFFILIATE_REPLACE_ME
-        ? ' Some pages carry recreation-affiliate links once the affiliate accounts are wired (currently placeholders).'
-        : ' Some links on recreation pages are affiliate links — see the disclosure page.'}
+        ? ' Recreation-affiliate links appear on lake pages once partner accounts are wired.'
+        : ' Some lake-page links are affiliate — see the disclosure page.'}
     </p>
-    <p class="mut" style="margin-top:10px">© {SITE.name}. Built {new Date().getFullYear()}.</p>
+    <div class="copy">© {SITE.name} {year}</div>
   </div>
 </footer>

@@ -1,41 +1,131 @@
 ---
 import BaseLayout from '../layouts/BaseLayout.astro';
-import { SITE, FRESH_DAYS } from '../consts';
+import { SITE } from '../consts';
+import { LAKES, freshLakes } from '../lib/lakes';
 import { breadcrumbLd } from '../lib/seo';
-const title = 'About & data sources';
-const description = `How ${SITE.name} gets its lake-level data, how percent-full is computed, the freshness policy, and the data-source list (USGS, CDEC).`;
+
+const liveCount = freshLakes().length;
+const title = 'About — the developer behind LakeLevelNow';
+const description = 'LakeLevelNow is built solo by the independent developer behind zovo.one. Live US lake and reservoir levels from USGS and CDEC — free, fast, no ads.';
 const ld = [breadcrumbLd([{ name: 'Home', path: '/' }, { name: 'About', path: '/about' }])];
+const ZOVO = 'https://zovo.one';
+const GH = 'https://github.com/theluckystrike';
+const EMAIL = 'support@zovo.one';
 ---
 <BaseLayout title={title} description={description} path="/about" jsonLd={ld}>
   <div class="container">
-    <article class="prose">
-      <h1>About {SITE.name}</h1>
-      <p>{SITE.name} shows the current water level and percent full for US lakes and reservoirs, pulled straight from public water-data feeds — not scraped from other websites. The goal is a single, fast, honest place to see how full a lake is right now, how it's trending, and whether you can realistically launch a boat.</p>
+    <style>
+      .eyebrow{font-size:11px;font-weight:600;color:var(--teal);text-transform:uppercase;letter-spacing:.08em;margin-bottom:18px}
+      .about-stats{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-top:36px}
+      @media(max-width:760px){.about-stats{grid-template-columns:repeat(2,1fr)}}
+      .about-stats .s{background:var(--card);border:1px solid var(--border);border-radius:var(--r);padding:20px}
+      .about-stats .s .n{font-size:30px;font-weight:700;letter-spacing:-.03em;color:var(--ink);font-variant-numeric:tabular-nums}
+      .about-stats .s .t{font-size:12px;color:var(--t3);margin-top:5px}
+      .about-stats .tagline{grid-column:1/-1;font-size:13px;color:var(--t2);font-weight:500;margin-bottom:2px}
+      .about-prose p{font-size:15.5px;color:var(--t2);line-height:1.75;max-width:660px}
+      .pricing{display:grid;grid-template-columns:repeat(2,1fr);gap:12px;margin-top:8px}
+      @media(max-width:760px){.pricing{grid-template-columns:1fr}}
+      .price{background:var(--card);border:1px solid var(--border);border-radius:var(--r);padding:26px;display:flex;flex-direction:column}
+      .price.featured{border-color:var(--teal);box-shadow:0 0 0 3px var(--teal-bg)}
+      .price .tier{font-size:11px;font-weight:600;color:var(--t3);text-transform:uppercase;letter-spacing:.07em}
+      .price .amt{font-size:34px;font-weight:700;letter-spacing:-.03em;color:var(--ink);margin-top:6px;font-variant-numeric:tabular-nums}
+      .price .amt small{font-size:14px;font-weight:500;color:var(--t3);letter-spacing:0}
+      .price .blurb{font-size:14px;color:var(--t2);line-height:1.6;margin-top:10px}
+      .price ul{list-style:none;padding:0;margin:14px 0 0}
+      .price li{position:relative;padding:6px 0 6px 22px;font-size:13.5px;color:var(--t2);border-top:1px solid var(--border-soft)}
+      .price li:before{content:"";position:absolute;left:0;top:13px;width:11px;height:6px;border-left:2px solid var(--teal);border-bottom:2px solid var(--teal);transform:rotate(-45deg)}
+      .price .btn{margin-top:18px;text-align:center}
+      .links-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-top:8px}
+      @media(max-width:760px){.links-grid{grid-template-columns:1fr}}
+      .link-card{display:block;background:var(--card);border:1px solid var(--border);border-radius:var(--r);padding:20px;color:inherit;transition:transform .15s,box-shadow .15s}
+      .link-card:hover{transform:translateY(-2px);box-shadow:var(--shadow-hover);text-decoration:none}
+      .link-card .lt{font-size:15px;font-weight:600;color:var(--ink)}
+      .link-card .ld{font-size:13.5px;color:var(--t3);margin-top:5px;line-height:1.5}
+      .try-cta{background:var(--ink);border-radius:var(--r);padding:40px;margin-top:8px;color:#fff}
+      .try-cta h2{color:#fff;font-size:24px;letter-spacing:-.02em}
+      .try-cta p{color:rgba(255,255,255,.7);font-size:15px;max-width:560px;line-height:1.65}
+      .try-cta .btn{margin-top:8px;background:#34b8a0;color:#06231d}
+      .try-cta .btn:hover{background:#2ea391}
+      .section-h{font-size:20px;font-weight:700;letter-spacing:-.02em;margin-bottom:10px}
+      .section-k{font-size:11px;font-weight:600;color:var(--teal);text-transform:uppercase;letter-spacing:.07em;margin-bottom:4px}
+    </style>
 
-      <h2>Where the data comes from</h2>
-      <p>Each lake's reading comes from its own authoritative feed:</p>
-      <div style="margin-top:16px;display:flex;flex-direction:column;gap:10px;">
-        <div class="feed-card"><div class="ft">USGS Water Services</div><div class="fd">Thousands of US gages (gage height and reservoir elevation). Free, keyless, updates every 15–60 minutes.</div></div>
-        <div class="feed-card"><div class="ft">CDEC (California Data Exchange)</div><div class="fd">California reservoir storage and elevation, daily. Used for Shasta, Oroville, Folsom, Berryessa, and other CA reservoirs.</div></div>
-        <div class="feed-card"><div class="ft">Additional feeds</div><div class="fd">LCRA HydroMet for Texas Highland Lakes, USBR for Mead/Powell, USACE district data — wired as the registry grows.</div></div>
+    <section class="hero" style="padding-top:56px;">
+      <div class="eyebrow">The person behind the tools</div>
+      <h1 style="max-width:620px;">About LakeLevelNow</h1>
+      <p class="lead" style="max-width:600px;">I'm an independent developer and I build small, fast utility sites. LakeLevelNow is one of them. Check how full a lake is, see a 30-day trend, and get a straight answer on whether you can launch a boat — pulled straight from USGS and CDEC gages. No account, no pop-ups, no essay before the gauge loads.</p>
+    </section>
+
+    <div class="about-stats">
+      <div class="tagline">Solo. Full-time. Coffee-powered.</div>
+      <div class="s"><div class="n">{LAKES.length}</div><div class="t">lakes in the registry</div></div>
+      <div class="s"><div class="n">2</div><div class="t">live data feeds (USGS + CDEC)</div></div>
+      <div class="s"><div class="n">0</div><div class="t">sign-ups required</div></div>
+      <div class="s"><div class="n">0</div><div class="t">ads or pop-ups</div></div>
+    </div>
+
+    <section class="section about-prose">
+      <div class="section-k">What I build</div>
+      <h2 class="section-h">One job per site, done fast</h2>
+      <p>Most lake-level sites are scraped tables that haven't been updated since the last flood season, or a single hobbyist page for one reservoir. I went the other way. Every lake pulls its own live gage — <b>USGS</b> for most, <b>CDEC</b> for California reservoirs — so the number you see is the same one the operator reports, stamped with exactly when it was taken.</p>
+      <p>The <b>"can I launch?"</b> read turns a raw elevation into the thing you actually wanted to know: will the ramp be in the water this weekend. It's a level-based guide, not a guarantee — always confirm the ramp with the operator before you go.</p>
+      <p>I build the whole site on my own and work on it full time. That's the only reason the data stays fresh and a request for a new lake actually gets read the same day.</p>
+    </section>
+
+    <section class="section about-prose">
+      <div class="section-k">The honest part</div>
+      <h2 class="section-h">What's live, and what isn't</h2>
+      <p>Not every lake has a real-time gage. Some I wired up and the feed went dark; those show <b>"feed connecting"</b> and reference data — never a made-up number. A reading only counts as live if it's within seven days; anything older gets flagged "may be delayed" rather than passed off as current.</p>
+      <p>So I'd rather hear what's wrong than guess at it. Wrong gage, mislabeled lake, a reservoir you'd like added — send it over. Small fixes usually ship the same week, and the bigger ideas go on a list I actually work through.</p>
+    </section>
+
+    <section class="section">
+      <div class="section-k">Support and access</div>
+      <h2 class="section-h" style="margin-bottom:8px;">Keep it free, or get all of it</h2>
+      <p class="about-prose" style="margin-bottom:20px;">Every page here is free and stays free. There's no paywall on the water level, and there never will be. Two options if you want more than that.</p>
+      <div class="pricing">
+        <div class="price">
+          <div class="tier">Pro · one payment</div>
+          <div class="amt">$4.99</div>
+          <div class="blurb">A small thank-you for the work. It covers the server bill, pushes your requests up the list, gets you new tools before they go public, and keeps the site ad-free.</div>
+          <ul>
+            <li>Your feature requests near the top of the queue</li>
+            <li>Early access to tools still in testing</li>
+            <li>No subscription, nothing to cancel</li>
+          </ul>
+          <a class="btn" href={ZOVO} rel="nofollow noopener">Get Pro on zovo.one</a>
+        </div>
+        <div class="price featured">
+          <div class="tier">Lifetime · best value</div>
+          <div class="amt">$99 <small>once</small></div>
+          <div class="blurb">Every tool I build, for good. The zovo.one lifetime membership covers this site and everything else I make — no monthly fee, no per-tool charge.</div>
+          <ul>
+            <li>Lifetime access to every tool on zovo.one, now and not-yet-shipped</li>
+            <li>The zovo.one Chrome extension and BeLikeNative, included</li>
+            <li>Your requests jump the queue · one payment, kept for good</li>
+          </ul>
+          <a class="btn" href={ZOVO} rel="nofollow noopener">Get lifetime on zovo.one</a>
+        </div>
       </div>
+    </section>
 
-      <h2>How we compute things</h2>
-      <div class="dlist" style="margin-top:16px;">
-        <div class="dr"><div class="dt">Percent full</div><div class="dd">Current storage (acre-feet) ÷ the reservoir's published full capacity, as a percentage.</div></div>
-        <div class="dr"><div class="dt">Feet below full pool</div><div class="dd">Full-pool elevation − current elevation. Positive means below full; negative means above.</div></div>
-        <div class="dr"><div class="dt">24-hour change</div><div class="dd">Difference between the two most recent readings in the series.</div></div>
-        <div class="dr"><div class="dt">~30-day trend</div><div class="dd">The sparkline of the last ~30 daily or instantaneous readings.</div></div>
+    <section class="section">
+      <div class="section-k">Where everything lives</div>
+      <h2 class="section-h" style="margin-bottom:8px;">Tools, code, and a real inbox</h2>
+      <p class="about-prose" style="margin-bottom:20px;">The tools, the membership, and the rest of what I make all live on zovo.one. The code I can share sits on GitHub. Got a question before you spend anything? Email me and a real person — me — writes back.</p>
+      <div class="links-grid">
+        <a class="link-card" href={ZOVO} rel="nofollow noopener"><div class="lt">zovo.one</div><div class="ld">The tools, the membership, and lifetime access in one place.</div></a>
+        <a class="link-card" href={GH} rel="nofollow noopener"><div class="lt">GitHub</div><div class="ld">The code I keep in the open, plus what I'm tinkering with. github.com/theluckystrike</div></a>
+        <a class="link-card" href={`mailto:${EMAIL}`}><div class="lt">Email</div><div class="ld">A feature idea, a bug, or a question before you buy. {EMAIL}</div></a>
       </div>
+    </section>
 
-      <h2>Freshness policy</h2>
-      <p>A reading is shown as live only if it is within {FRESH_DAYS} days. If a gage hasn't reported recently, {SITE.name} flags it "may be delayed" rather than pass an old number off as current. Lakes whose feed isn't yet wired show reference data and a note — never a fabricated level.</p>
+    <section class="section try-cta">
+      <div class="section-k" style="color:#34b8a0;">Try the tools first</div>
+      <h2>The best way to decide is to use the thing</h2>
+      <p>Start with a lake you know — check how full it is and whether you can launch. Come back if you want the rest.</p>
+      <a class="btn" href="/lakes">Browse the lakes →</a>
+    </section>
 
-      <h2>Accuracy &amp; your responsibility</h2>
-      <p>These are point-in-time readings from public feeds; they can lag real conditions, and reservoir operators can change releases and gate operations at any time. Always confirm current ramp status, hazards, and conditions with the lake operator before you go on the water. {SITE.name} is not affiliated with any government agency.</p>
-
-      <h2>Contact</h2>
-      <p>Spot a wrong gage, a mislabeled lake, or a feed you'd like added? Email <a href={`mailto:${SITE.contactEmail}`}>{SITE.contactEmail}</a>.</p>
-    </article>
   </div>
 </BaseLayout>

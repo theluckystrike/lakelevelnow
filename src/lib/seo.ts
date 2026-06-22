@@ -1,9 +1,10 @@
-// SEO helpers: absolute canonical URLs, OpenGraph, and JSON-LD structured data.
+// SEO + GEO helpers: canonical URLs, OpenGraph, JSON-LD structured data.
+// Enriched per the GEO sprint: Organization.knowsAbout, source isBasedOn chain,
+// and speakable targeting for Quotable Authority Sentences (class="qas").
 import { SITE } from '../consts';
 
 export function absUrl(path = '/'): string {
   let p = path.startsWith('/') ? path : `/${path}`;
-  // Match the directory-format build + sitemap (trailing slash on page URLs).
   if (p !== '/' && !/[#?]/.test(p) && !/\.[a-z0-9]+$/i.test(p) && !p.endsWith('/')) {
     p = `${p}/`;
   }
@@ -25,7 +26,17 @@ export function buildMeta({ title, description, path = '/', ogImage, noindex }: 
   return { fullTitle, description, canonical, image, noindex };
 }
 
-// JSON-LD: Organization (sitewide identity).
+// The verifiable source chain. isBasedOn tells AI engines our readings trace to a
+// primary public feed — the GEO differentiator vs unverified competitor claims.
+const SOURCE_USGS = { '@type': 'CreativeWork', name: 'USGS Water Services', url: 'https://waterservices.usgs.gov/' };
+const SOURCE_CDEC = { '@type': 'CreativeWork', name: 'California Data Exchange (CDEC)', url: 'https://cdec.water.ca.gov/' };
+export function sourceFor(feed?: string | null) {
+  if (feed === 'CDEC') return SOURCE_CDEC;
+  if (feed === 'USGS') return SOURCE_USGS;
+  return null;
+}
+
+// JSON-LD: Organization — knowsAbout declares topical authority to AI engines.
 export function organizationLd() {
   return {
     '@context': 'https://schema.org',
@@ -34,10 +45,17 @@ export function organizationLd() {
     url: SITE.url,
     logo: absUrl('/favicon.svg'),
     description: SITE.description,
+    knowsAbout: [
+      'lake water levels',
+      'reservoir percent full',
+      'USGS water data',
+      'CDEC reservoir storage',
+      'boat ramp and launch conditions',
+      'drought reservoir levels',
+    ],
   };
 }
 
-// JSON-LD: WebSite (sitelinks search-box eligibility).
 export function websiteLd() {
   return {
     '@context': 'https://schema.org',
@@ -47,7 +65,6 @@ export function websiteLd() {
   };
 }
 
-// JSON-LD: FAQPage from Q&A pairs — eligible for rich results.
 export function faqLd(pairs: { q: string; a: string }[]) {
   return {
     '@context': 'https://schema.org',
@@ -60,7 +77,6 @@ export function faqLd(pairs: { q: string; a: string }[]) {
   };
 }
 
-// JSON-LD: BreadcrumbList for programmatic pages.
 export function breadcrumbLd(items: { name: string; path: string }[]) {
   return {
     '@context': 'https://schema.org',
@@ -74,8 +90,19 @@ export function breadcrumbLd(items: { name: string; path: string }[]) {
   };
 }
 
-// JSON-LD: a lake/reservoir as a LakeBodyOfWater, with the live observation as a
-// quantitative value. Helps search engines surface the current level.
+// Speakable: marks the quotable authority sentence (class="qas") + h1 as the part
+// of the page voice assistants / AI engines should extract.
+export function speakableLd(path: string) {
+  return {
+    '@context': 'https://schema.org',
+    '@type': 'WebPage',
+    url: absUrl(path),
+    speakable: { '@type': 'SpeakableSpecification', cssSelector: ['h1', '.qas'] },
+  };
+}
+
+// JSON-LD: a lake as LakeBodyOfWater, with the live reading as an Observation and
+// the source chain via isBasedOn.
 export function lakeLd(opts: {
   name: string;
   path: string;
@@ -84,6 +111,7 @@ export function lakeLd(opts: {
   levelFt?: number | null;
   pctFull?: number | null;
   asOf?: string;
+  feed?: string | null;
 }) {
   const body: Record<string, unknown> = {
     '@context': 'https://schema.org',
@@ -93,11 +121,13 @@ export function lakeLd(opts: {
     containedInPlace: { '@type': 'AdministrativeArea', name: opts.state },
   };
   if (opts.river) body.description = `Water level for ${opts.name}, on the ${opts.river}, ${opts.state}.`;
+  const src = sourceFor(opts.feed);
+  if (src) body.isBasedOn = [src];
   if (opts.levelFt != null) {
     body.subjectOf = {
       '@type': 'Observation',
       observedNode: { '@type': 'LakeBodyOfWater', name: opts.name },
-      measurementMethod: 'USGS / CDEC public water-data feed',
+      measurementMethod: opts.feed ? `${opts.feed} public water-data feed` : 'public water-data feed',
       observationDate: opts.asOf,
       variableMeasured: {
         '@type': 'PropertyValue',

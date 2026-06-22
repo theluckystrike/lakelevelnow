@@ -1,5 +1,5 @@
 {
-  "run_at": "2026-06-22T04:47:48.630Z",
+  "run_at": "2026-06-22T04:53:43.777Z",
   "total": 44,
   "fresh": 25,
   "stale": 0,
@@ -43,7 +43,7 @@
     {
       "slug": "lake-buchanan",
       "feed": "usgs",
-      "as_of": "2026-06-21T23:25:00.000-05:00",
+      "as_of": "2026-06-21T23:40:00.000-05:00",
       "age_days": 0,
       "fresh": true,
       "status": "fresh"

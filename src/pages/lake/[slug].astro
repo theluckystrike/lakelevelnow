@@ -17,8 +17,8 @@ const stName = stateName(lake.state);
 const asOfFmt = reading?.as_of ? new Date(reading.as_of).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : '';
 const levelPhrase = reading?.pct_full != null ? `${reading.pct_full}% full` : (reading?.level_ft != null ? `at ${fmtNum(reading.level_ft,1)} ft` : 'current water level');
 
-const title = `${lake.name} water level — ${live ? levelPhrase : 'live level & percent full'}`;
-const description = `${lake.name} (${lake.river}, ${stName}) water level and percent full${live ? ` — ${levelPhrase} now` : ''}. Live level gauge, 30-day trend, and a plain-English read on whether you can launch a boat. Operated by ${lake.operator}.`;
+const title = `${lake.name} water level`;
+const description = `${lake.name} water level and percent full — live USGS/CDEC gauge, 30-day trend, and a plain-English boat-launch read.`;
 
 // Quotable Authority Sentence (GEO): declarative, specific, sourced, <25 words.
 let qas = '';

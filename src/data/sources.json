@@ -1,0 +1,31 @@
+{
+  "_comment": "Authoritative feed bindings — the SINGLE source of truth for live data. The pipeline reads this; it never does runtime name-discovery (NASA rule: deterministic inputs). Each value is {feed, site, param?}. feed ∈ cdec|usgs|usbr. Verified 2026-06-22 by scripts/discover-sources.mjs + manual probes. Lakes absent here render as registry-only pages (no live reading).",
+
+  "lake-shasta":        { "feed": "cdec", "site": "SHA" },
+  "lake-oroville":      { "feed": "cdec", "site": "ORO" },
+  "lake-berryessa":     { "feed": "cdec", "site": "BER" },
+  "folsom-lake":        { "feed": "cdec", "site": "FOL" },
+  "pine-flat-lake":     { "feed": "cdec", "site": "PNF" },
+  "lake-isabella":      { "feed": "cdec", "site": "ISB" },
+  "millerton-lake":     { "feed": "cdec", "site": "MIL" },
+  "new-melones-lake":   { "feed": "cdec", "site": "NML" },
+  "don-pedro-lake":     { "feed": "cdec", "site": "DNP" },
+  "san-luis-reservoir": { "feed": "cdec", "site": "SNL" },
+  "lake-cachuma":       { "feed": "cdec", "site": "CCH" },
+  "lake-casitas":       { "feed": "cdec", "site": "CAS" },
+
+  "lake-mead":          { "feed": "usbr", "site": "Lake Mead" },
+  "lake-mohave":        { "feed": "usbr", "site": "Lake Mohave" },
+  "lake-havasu":        { "feed": "usbr", "site": "Lake Havasu" },
+
+  "lake-powell":        { "feed": "usgs", "site": "09379900", "param": "62614" },
+  "lake-fork":          { "feed": "usgs", "site": "08018800", "param": "62614" },
+  "lake-whitney":       { "feed": "usgs", "site": "08092500", "param": "62614" },
+  "lake-belton":        { "feed": "usgs", "site": "08102000", "param": "62614" },
+  "lake-buchanan":      { "feed": "usgs", "site": "08148000", "param": "00062" },
+  "canyon-lake":        { "feed": "usgs", "site": "08167700", "param": "62614" },
+  "medina-lake":        { "feed": "usgs", "site": "08179500", "param": "62614" },
+  "lake-somerville":    { "feed": "usgs", "site": "08109900", "param": "62614" },
+  "nolin-river-lake":   { "feed": "usgs", "site": "03310900", "param": "62614" },
+  "lake-allatoona":     { "feed": "usgs", "site": "02393500", "param": "62614" }
+}

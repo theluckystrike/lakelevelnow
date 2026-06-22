@@ -1,0 +1,60 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!--
+  com.lakelevelnow.update — desktop data-refresh LaunchAgent for lakelevelnow.com.
+
+  Runs scripts/auto-update.sh twice daily (06:17 & 18:17 local). That fetches
+  fresh lake levels, builds (gated), and pushes to GitHub, which triggers
+  pages.yml to rebuild lakelevelnow.com. macOS will also fire a missed run on
+  wake (StartCalendarInterval catches up after sleep).
+
+  Install (user agent — no sudo needed):
+    cp scripts/com.lakelevelnow.update.plist ~/Library/LaunchAgents/
+    launchctl bootstrap gui/$UID ~/Library/LaunchAgents/com.lakelevelnow.update.plist
+  Uninstall:
+    launchctl bootout gui/$UID ~/Library/LaunchAgents/com.lakelevelnow.update.plist
+    rm ~/Library/LaunchAgents/com.lakelevelnow.update.plist
+  Run once by hand:
+    bash scripts/auto-update.sh
+  Logs: ~/Library/Logs/lakelevelnow/update.log
+-->
+<plist version="1.0">
+<dict>
+  <key>Label</key>
+  <string>com.lakelevelnow.update</string>
+
+  <key>ProgramArguments</key>
+  <array>
+    <string>/bin/bash</string>
+    <string>/Users/mike/Desktop/portfolio-empire/lakelevelnow/scripts/auto-update.sh</string>
+  </array>
+
+  <key>StartCalendarInterval</key>
+  <array>
+    <dict>
+      <key>Hour</key><integer>6</integer>
+      <key>Minute</key><integer>17</integer>
+    </dict>
+    <dict>
+      <key>Hour</key><integer>18</integer>
+      <key>Minute</key><integer>17</integer>
+    </dict>
+  </array>
+
+  <key>RunAtLoad</key>
+  <false/>
+
+  <key>StandardOutPath</key>
+  <string>/Users/mike/Library/Logs/lakelevelnow/launchd.out.log</string>
+  <key>StandardErrorPath</key>
+  <string>/Users/mike/Library/Logs/lakelevelnow/launchd.err.log</string>
+
+  <key>EnvironmentVariables</key>
+  <dict>
+    <key>HOME</key>
+    <string>/Users/mike</string>
+    <key>PATH</key>
+    <string>/usr/local/bin:/opt/homebrew/bin:/usr/bin:/bin</string>
+  </dict>
+</dict>
+</plist>

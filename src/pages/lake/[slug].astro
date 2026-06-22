@@ -3,7 +3,7 @@ import BaseLayout from '../../layouts/BaseLayout.astro';
 import LakeGauge from '../../components/LakeGauge.astro';
 import { SITE, AFFILIATES } from '../../consts';
 import { LAKES, getReading, launchRead, status, fmtNum, stateName } from '../../lib/lakes';
-import { lakeLd, faqLd, breadcrumbLd } from '../../lib/seo';
+import { lakeLd, faqLd, breadcrumbLd, speakableLd } from '../../lib/seo';
 
 export function getStaticPaths() {
   return LAKES.map((l) => ({ params: { slug: l.slug } }));
@@ -14,14 +14,26 @@ const lake = LAKES.find((l) => l.slug === slug)!;
 const reading = getReading(slug);
 const live = !!(reading && reading.fresh);
 const stName = stateName(lake.state);
+const asOfFmt = reading?.as_of ? new Date(reading.as_of).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : '';
 const levelPhrase = reading?.pct_full != null ? `${reading.pct_full}% full` : (reading?.level_ft != null ? `at ${fmtNum(reading.level_ft,1)} ft` : 'current water level');
 
 const title = `${lake.name} water level — ${live ? levelPhrase : 'live level & percent full'}`;
 const description = `${lake.name} (${lake.river}, ${stName}) water level and percent full${live ? ` — ${levelPhrase} now` : ''}. Live level gauge, 30-day trend, and a plain-English read on whether you can launch a boat. Operated by ${lake.operator}.`;
 
+// Quotable Authority Sentence (GEO): declarative, specific, sourced, <25 words.
+let qas = '';
+if (live) {
+  const feedName = reading!.feed === 'CDEC' ? 'CDEC' : 'USGS';
+  if (reading!.pct_full != null) {
+    qas = `${lake.name} is ${reading!.pct_full}% full as of ${asOfFmt}, per ${feedName} data${reading!.feet_from_full != null ? ` — ${fmtNum(Math.abs(reading!.feet_from_full),1)} ft ${reading!.feet_from_full > 0 ? 'below' : 'above'} full pool` : ''}.`;
+  } else if (reading!.level_ft != null) {
+    qas = `${lake.name} is at ${fmtNum(reading!.level_ft,1)} ft as of ${asOfFmt}, per ${feedName} data${lake.full_pool_ft != null ? `; full pool is ${fmtNum(lake.full_pool_ft,0)} ft` : ''}.`;
+  }
+}
+
 const faqs = [
   { q: `How full is ${lake.name} right now?`, a: live
-      ? (reading!.pct_full != null ? `${lake.name} is about ${reading!.pct_full}% full as of ${new Date(reading!.as_of).toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'})}.` : `The most recent reading puts ${lake.name} at ${fmtNum(reading!.level_ft,1)} feet.`)
+      ? (reading!.pct_full != null ? `${lake.name} is about ${reading!.pct_full}% full as of ${asOfFmt}.` : `The most recent reading puts ${lake.name} at ${fmtNum(reading!.level_ft,1)} feet.`)
       : `${lake.name}'s live gage is being connected to ${SITE.name}. Full-pool reference is ${lake.full_pool_ft!=null?fmtNum(lake.full_pool_ft,0)+' ft':'listed on the operator page'}; check the operator (${lake.operator}) for the current figure.` },
   { q: `Can I launch a boat at ${lake.name}?`, a: `${launchRead(reading).text} Individual ramps open and close on their own schedules and on local hazards.` },
   { q: `Where does ${lake.name}'s level come from?`, a: `${SITE.name} pulls it from the ${reading?.feed || 'operator'} public water-data feed${reading?.feed === 'CDEC' ? ' (California Data Exchange)' : ''}. The reading is timestamped in the gauge above.` },
@@ -29,7 +41,8 @@ const faqs = [
 ];
 
 const ld = [
-  lakeLd({ name: lake.name, path: `/lake/${slug}`, state: stName, river: lake.river, levelFt: reading?.level_ft ?? null, pctFull: reading?.pct_full ?? null, asOf: reading?.as_of }),
+  lakeLd({ name: lake.name, path: `/lake/${slug}`, state: stName, river: lake.river, levelFt: reading?.level_ft ?? null, pctFull: reading?.pct_full ?? null, asOf: reading?.as_of, feed: reading?.feed }),
+  speakableLd(`/lake/${slug}`),
   faqLd(faqs),
   breadcrumbLd([{ name: 'Home', path: '/' }, { name: 'Lakes', path: '/lakes' }, { name: lake.name, path: `/lake/${slug}` }]),
 ];
@@ -52,16 +65,17 @@ const toneHex = (t: string) => t === 'red' ? '#bb5a37' : t === 'amber' ? '#b07d1
       <p style="font-size:14px;color:var(--t2);margin-top:8px;">{lake.river} · {stName} · operated by {lake.operator}</p>
     </div>
 
+    {qas && <p class="qas" data-keyword={`${lake.name} water level`} style="font-size:15px;color:var(--t1);margin-top:14px;max-width:660px;font-weight:500;">{qas}</p>}
+
     {live ? (
       <LakeGauge lake={lake} reading={reading!} />
     ) : (
       <div class="callout a" style="margin-top:18px;">
-        <p><b>Live level feed Connecting</b> — {lake.name}'s gage ({lake.feed || 'the operator feed'}) is being wired. Reference data below; for the current figure, see the
+        <p><b>Live Level feed Connecting</b> — {lake.name}'s gage ({lake.feed || 'the operator feed'}) is being wired. Reference data below; for the current figure, see the
         <a href={reading?.feed === 'CDEC' ? `https://cdec.water.ca.gov/dynamicapp/staMeta?station_id=${lake.cdec_id}` : (lake.usgs_site ? `https://waterdata.usgs.gov/monitoring-location/${lake.usgs_site}/` : '#')}>operator's page</a>.</p>
       </div>
     )}
 
-    <!-- About this lake -->
     <section class="section">
       <h2 style="margin-bottom:14px;">About {lake.name}</h2>
       <div class="def-table">
@@ -74,7 +88,6 @@ const toneHex = (t: string) => t === 'red' ? '#bb5a37' : t === 'amber' ? '#b07d1
       </div>
     </section>
 
-    <!-- Affiliate -->
     <div class="affil">
       <h3>Going to {lake.name}?</h3>
       {affilWired ? (
@@ -91,7 +104,6 @@ const toneHex = (t: string) => t === 'red' ? '#bb5a37' : t === 'amber' ? '#b07d1
       )}
     </div>
 
-    <!-- FAQ -->
     <section class="section">
       <h2 style="margin-bottom:4px;">{lake.name} — questions</h2>
       {faqs.map((f) => <div class="faq-item"><div class="q">{f.q}</div><div class="a">{f.a}</div></div>)}

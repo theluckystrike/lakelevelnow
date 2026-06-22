@@ -40,10 +40,13 @@ const ld = [faqLd(faqs), breadcrumbLd([{ name: 'Home', path: '/' }])];
       </div>
       <div class="grid cols-2">
         {fresh.map(({ lake, reading }) => {
-          const st = status(reading.pct_full);
+          const st = status(reading.pct_full, reading.feet_from_full);
           const hex = toneHex(st.tone);
           const val = reading.pct_full != null ? `${reading.pct_full}%` : `${fmtNum(reading.level_ft,1)} ft`;
-          const bar = reading.pct_full != null ? `${reading.pct_full}%` : '0%';
+          // Elevation-only lakes have no %full; size the bar to the status bucket
+          // (a qualitative proxy) so it never reads a misleading 0% on a live lake.
+          const barProxy = ({ green: 92, cyan: 72, amber: 48, red: 18 } as const)[st.tone];
+          const bar = reading.pct_full != null ? `${reading.pct_full}%` : `${barProxy}%`;
           return (
             <a class="lake-card" href={`/lake/${lake.slug}`}>
               <div class="top">

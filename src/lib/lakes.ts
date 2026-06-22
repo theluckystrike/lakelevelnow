@@ -62,13 +62,26 @@ export function byState(): Record<string, LakeEntry[]> {
   return m;
 }
 
-// Percent-full → status bucket + tone. Never color alone (design principle: color-blind safe).
-export function status(pct: number | null): { label: string; tone: 'green' | 'cyan' | 'amber' | 'red' } {
-  if (pct == null) return { label: 'no live reading', tone: 'amber' };
-  if (pct >= 90) return { label: 'near full', tone: 'green' };
-  if (pct >= 70) return { label: 'healthy', tone: 'cyan' };
-  if (pct >= 45) return { label: 'below normal', tone: 'amber' };
-  return { label: 'low', tone: 'red' };
+// Status bucket + tone. Works for BOTH percent-full lakes (CDEC/USBR with
+// storage) and elevation-only lakes (USGS reservoir elevations that have no
+// storage → no pct_full). For the latter we derive a bucket from feet_from_full
+// so a lake with a live elevation is never mislabeled "no live reading".
+// Never color alone (design principle: color-blind safe) — every tone has a label.
+export function status(pct: number | null, feetFromFull: number | null = null): { label: string; tone: 'green' | 'cyan' | 'amber' | 'red' } {
+  if (pct != null) {
+    if (pct >= 90) return { label: 'near full', tone: 'green' };
+    if (pct >= 70) return { label: 'healthy', tone: 'cyan' };
+    if (pct >= 45) return { label: 'below normal', tone: 'amber' };
+    return { label: 'low', tone: 'red' };
+  }
+  // No %full: infer from how far below full-pool the elevation sits.
+  if (feetFromFull != null) {
+    if (feetFromFull <= 3) return { label: 'near full', tone: 'green' };
+    if (feetFromFull <= 10) return { label: 'healthy', tone: 'cyan' };
+    if (feetFromFull <= 25) return { label: 'below normal', tone: 'amber' };
+    return { label: 'low', tone: 'red' };
+  }
+  return { label: 'no live reading', tone: 'amber' };
 }
 
 // "Can I launch?" interpretation from the level (the value-add the raw tables never give).

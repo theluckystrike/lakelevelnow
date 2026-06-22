@@ -9,7 +9,7 @@ const { lake, reading } = Astro.props;
 
 const hasPct = reading.pct_full != null;
 const pct = hasPct ? (reading.pct_full as number) : null;
-const st = status(pct);
+const st = status(pct, reading.feet_from_full);
 const tone = st.tone === 'green' || st.tone === 'cyan' ? '#0b7d6a' : st.tone === 'amber' ? '#b07d1a' : st.tone === 'red' ? '#bb5a37' : '#8a949a';
 
 // 270° arc gauge geometry (r=80, gap at bottom via rotate(135deg)).

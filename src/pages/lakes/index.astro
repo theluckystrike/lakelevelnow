@@ -25,7 +25,7 @@ const toneHex = (t: string) => t === 'red' ? '#bb5a37' : t === 'amber' ? '#b07d1
             <thead><tr><th>Lake</th><th>River</th><th>Operator</th><th class="num">Level</th><th>Status</th></tr></thead>
             <tbody>
               {lakes.map((l) => {
-                const r = getReading(l.slug); const live = !!(r && r.fresh); const st = status(r?.pct_full ?? null); const hex = toneHex(st.tone);
+                const r = getReading(l.slug); const live = !!(r && r.fresh); const st = status(r?.pct_full ?? null, r?.feet_from_full ?? null); const hex = toneHex(st.tone);
                 return (
                   <tr>
                     <td><a href={`/lake/${l.slug}`}><b>{l.name}</b></a></td>

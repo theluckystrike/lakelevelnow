@@ -82,7 +82,7 @@ const deltaUp = (reading.delta_24h ?? 0) >= 0;
 <div class={`verdict ${launch.ok ? '' : 'warn'}`}>
   <div class="ic">
     {launch.ok
-      ? <svg width="18" height="18" viewBox="0 0 18 18" fill="none"><path d="M4 9.5L7.5 13L14 5" stroke="white" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"></path></svg>
+      ? <svg width="18" height="18" viewBox="0 0 18 18" fill="none" aria-hidden="true"><path d="M4 9.5L7.5 13L14 5" stroke="white" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"></path></svg>
       : <span style="font-size:18px;font-weight:800;line-height:1;">!</span>}
   </div>
   <div>

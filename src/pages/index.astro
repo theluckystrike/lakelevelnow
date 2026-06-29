@@ -2,7 +2,7 @@
 import BaseLayout from '../layouts/BaseLayout.astro';
 import { SITE } from '../consts';
 import { LAKES, freshLakes, byState, getReading, status, fmtNum, stateName } from '../lib/lakes';
-import { faqLd, breadcrumbLd } from '../lib/seo';
+import { authorLd, breadcrumbLd } from '../lib/seo';
 
 const title = 'Live US lake & reservoir water levels';
 const description = SITE.description;
@@ -22,7 +22,7 @@ const faqs = [
   { q: 'What does "percent full" mean?', a: 'Current storage divided by published full capacity, as a percentage. 100% means full pool; low percentages indicate drawdown for drought, flood control, or water supply.' },
   { q: 'Is the level shown in real time?', a: 'Almost — it is the most recent reading from the source, usually minutes to hours old. Always confirm conditions with the lake operator before heading out.' },
 ];
-const ld = [faqLd(faqs), breadcrumbLd([{ name: 'Home', path: '/' }])];
+const ld = [authorLd(), breadcrumbLd([{ name: 'Home', path: '/' }])];
 ---
 <BaseLayout title={title} description={description} path="/" jsonLd={ld}>
   <div class="container">

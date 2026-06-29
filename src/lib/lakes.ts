@@ -116,3 +116,44 @@ const STATE_NAMES: Record<string, string> = {
   OK: 'Oklahoma', MO: 'Missouri', VA: 'Virginia', NC: 'North Carolina',
   KY: 'Kentucky', AL: 'Alabama', AZ: 'Arizona', CO: 'Colorado', FL: 'Florida',
 };
+
+// Lake Powell operating-band reference elevations — PUBLISHED constants (not live
+// measurements), so they live in code. USBR Glen Canyon Dam publishes full pool,
+// minimum power pool, and dead pool; capacity and length are the NPS Glen Canyon NRA
+// FAQ figures. The all-time recorded low (3,519.92 ft on 2023-04-13) is corroborated
+// by NASA Earth Observatory ("just below 3,520 feet") and the American Southwest
+// record cited via Glen Canyon NRA; it replaced an earlier 3,519.28 ft figure that no
+// fetchable primary source substantiated (validated 2026-06-29). Exposed so the
+// Powell page never types a reference number by hand. Other lakes render the band
+// only if/when wired here.
+export const POWELL_BAND = {
+  fullPoolFt: 3700,
+  minPowerPoolFt: 3490,
+  deadPoolFt: 3370,
+  recordLowFt: 3519.92,
+  fullCapacityMaf: 27,
+  lengthMi: 186,
+};
+
+// Net change across a reading's series (last minus first). The series spans ~30 days
+// (SERIES_DAYS in fetch-levels.mjs), so this is the ~30-day elevation change. Pure
+// math on the validated USGS reading; returns null if the series is too short.
+export function changeOverSeries(series: { t: string; v: number }[] | undefined): number | null {
+  if (!series || series.length < 2) return null;
+  const last = series[series.length - 1].v;
+  const first = series[0].v;
+  if (!Number.isFinite(last) || !Number.isFinite(first)) return null;
+  return Math.round((last - first) * 100) / 100;
+}
+
+// Linear share of the live-storage elevation band sitting below full pool. Honest
+// geometric quantity (elevation distance), NOT a storage-volume claim — reservoirs
+// are wider near the top so volume is not linear in elevation. Returns null unless
+// both full pool and a lower band marker exist for the lake.
+export function liveBandBelowFullPct(levelFt: number | null, fullPoolFt: number | null, lowerBandFt: number | null): number | null {
+  if (levelFt == null || fullPoolFt == null || lowerBandFt == null) return null;
+  const band = fullPoolFt - lowerBandFt;
+  if (band <= 0) return null;
+  return Math.round(((fullPoolFt - levelFt) / band) * 100 * 100) / 100;
+}
+

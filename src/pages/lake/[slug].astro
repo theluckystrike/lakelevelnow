@@ -2,8 +2,8 @@
 import BaseLayout from '../../layouts/BaseLayout.astro';
 import LakeGauge from '../../components/LakeGauge.astro';
 import { SITE, AFFILIATES } from '../../consts';
-import { LAKES, getReading, launchRead, status, fmtNum, stateName } from '../../lib/lakes';
-import { lakeLd, faqLd, breadcrumbLd, speakableLd } from '../../lib/seo';
+import { LAKES, getReading, launchRead, status, fmtNum, stateName, POWELL_BAND, changeOverSeries, liveBandBelowFullPct } from '../../lib/lakes';
+import { lakeLd, authorLd, breadcrumbLd, speakableLd } from '../../lib/seo';
 
 export function getStaticPaths() {
   return LAKES.map((l) => ({ params: { slug: l.slug } }));
@@ -43,13 +43,32 @@ const faqs = [
 const ld = [
   lakeLd({ name: lake.name, path: `/lake/${slug}`, state: stName, river: lake.river, levelFt: reading?.level_ft ?? null, pctFull: reading?.pct_full ?? null, asOf: reading?.as_of, feed: reading?.feed }),
   speakableLd(`/lake/${slug}`),
-  faqLd(faqs),
+  authorLd(),
   breadcrumbLd([{ name: 'Home', path: '/' }, { name: 'Lakes', path: '/lakes' }, { name: lake.name, path: `/lake/${slug}` }]),
 ];
 
 const related = LAKES.filter((l) => l.state === lake.state && l.slug !== slug).slice(0, 4);
 const affilWired = Object.values(AFFILIATES).some((v) => v !== 'REPLACE_ME');
 const toneHex = (t: string) => t === 'red' ? '#bb5a37' : t === 'amber' ? '#b07d1a' : '#0b7d6a';
+
+// Validated-data derived figures (the pipeline's first-party compute layer). Every
+// value here is a deterministic transform of the live reading + published constants,
+// never a hand-typed number. Powell is the only lake with the full operating band
+// wired (POWELL_BAND); other lakes render the band only if their constants get added.
+const isPowell = slug === 'lake-powell';
+const elev = reading?.level_ft ?? null;
+const fullPool = lake.full_pool_ft ?? null;
+const band = isPowell ? POWELL_BAND : null;
+const feetBelowFull = reading?.feet_from_full != null
+  ? reading.feet_from_full
+  : (fullPool != null && elev != null ? Math.round((fullPool - elev) * 100) / 100 : null);
+const aboveMinPower = band && elev != null ? Math.round((elev - band.minPowerPoolFt) * 100) / 100 : null;
+const aboveDead = band && elev != null ? Math.round((elev - band.deadPoolFt) * 100) / 100 : null;
+const aboveRecordLow = band && elev != null ? Math.round((elev - band.recordLowFt) * 100) / 100 : null;
+const liveBandPct = band ? liveBandBelowFullPct(elev, band.fullPoolFt, band.deadPoolFt) : null;
+const change30d = changeOverSeries(reading?.series);
+const elevM = elev != null ? Math.round(elev * 0.3048 * 10000) / 10000 : null;
+const calcFull = fullPool; // exposed to the inline calculator script
 ---
 <BaseLayout title={title} description={description} path={`/lake/${slug}`} jsonLd={ld}>
   <div class="container">
@@ -63,6 +82,7 @@ const toneHex = (t: string) => t === 'red' ? '#bb5a37' : t === 'amber' ? '#b07d1
     <div style="padding-top:16px;">
       <h1>{lake.name} water level</h1>
       <p style="font-size:14px;color:var(--t2);margin-top:8px;">{lake.river} · {stName} · operated by {lake.operator}</p>
+      <p style="font-size:13px;color:var(--t2);margin-top:6px;">By <a href="/about/">Mike</a> — independent developer behind <a href="https://zovo.one" rel="noopener">zovo.one</a>. Readings pulled live from the same {reading?.feed || 'USGS'} feed the operator reports to.</p>
     </div>
 
     {qas && <p class="qas" data-keyword={`${lake.name} water level`} style="font-size:15px;color:var(--t1);margin-top:14px;max-width:660px;font-weight:500;">{qas}</p>}
@@ -74,6 +94,70 @@ const toneHex = (t: string) => t === 'red' ? '#bb5a37' : t === 'amber' ? '#b07d1
         <p><b>Live Level feed Connecting</b> — {lake.name}'s gage ({lake.feed || 'the operator feed'}) is being wired. Reference data below; for the current figure, see the
         <a href={reading?.feed === 'CDEC' ? `https://cdec.water.ca.gov/dynamicapp/staMeta?station_id=${lake.cdec_id}` : (lake.usgs_site ? `https://waterdata.usgs.gov/monitoring-location/${lake.usgs_site}/` : '#')}>operator's page</a>.</p>
       </div>
+    )}
+
+    {isPowell && band && elev != null && (
+      <section class="section">
+        <h2 style="margin-bottom:14px;">Where {lake.name} sits in its operating band</h2>
+        <p style="font-size:15px;color:var(--t1);max-width:660px;margin-bottom:14px;">
+          The reading lands <b>{feetBelowFull != null ? `${fmtNum(feetBelowFull,1)} ft below full pool` : 'within its normal range'}</b>. Minimum power pool is the line below which Glen Canyon Dam can no longer generate hydropower; dead pool is where water can no longer reach the outlet works. Today the surface is <b>{aboveMinPower != null ? `${fmtNum(aboveMinPower,1)} ft above minimum power pool` : '—'}</b> and <b>{aboveDead != null ? `${fmtNum(aboveDead,1)} ft above dead pool` : '—'}</b>.
+        </p>
+        <div class="def-table">
+          <div class="row"><div class="k">Full pool ({fmtNum(band.fullPoolFt,0)} ft)</div><div class="vv">{feetBelowFull != null ? `${fmtNum(feetBelowFull,1)} ft below` : '—'}</div></div>
+          <div class="row"><div class="k">Minimum power pool ({fmtNum(band.minPowerPoolFt,0)} ft)</div><div class="vv">{aboveMinPower != null ? `${fmtNum(aboveMinPower,1)} ft above` : '—'}</div></div>
+          <div class="row"><div class="k">Dead pool ({fmtNum(band.deadPoolFt,0)} ft)</div><div class="vv">{aboveDead != null ? `${fmtNum(aboveDead,1)} ft above` : '—'}</div></div>
+          <div class="row"><div class="k">All-time low ({fmtNum(band.recordLowFt,2)} ft, 2023-04-13)</div><div class="vv">{aboveRecordLow != null ? `${fmtNum(aboveRecordLow,1)} ft above` : '—'}</div></div>
+          <div class="row"><div class="k">Share of live-storage band below full</div><div class="vv">{liveBandPct != null ? `${fmtNum(liveBandPct,1)}%` : '—'}</div></div>
+        </div>
+        <p style="font-size:14px;color:var(--t2);max-width:660px;margin-top:12px;">
+          The band share is an elevation-distance fraction, not a storage-volume percentage — reservoirs widen toward the top, so volume is not linear with elevation.
+        </p>
+      </section>
+    )}
+
+    {elev != null && (
+      <section class="section">
+        <h2 style="margin-bottom:8px;">How the level compares lately</h2>
+        {(change30d != null || reading?.delta_24h != null || elevM != null) && (
+          <p style="font-size:15px;color:var(--t1);max-width:660px;">
+            {change30d != null && (
+              <>Over the roughly 30-day series the gage {change30d === 0 ? 'held flat' : change30d > 0 ? `rose ${fmtNum(change30d,1)} ft` : `fell ${fmtNum(Math.abs(change30d),1)} ft`}</>
+            )}{reading?.delta_24h != null && (
+              <>{change30d != null ? '; ' : ''}the last 24 hours moved it {reading.delta_24h === 0 ? 'not at all' : reading.delta_24h > 0 ? `up ${fmtNum(reading.delta_24h,1)} ft` : `down ${fmtNum(Math.abs(reading.delta_24h),1)} ft`}</>
+            )}. {elevM != null && (<>For readers outside the U.S., the surface is about <b>{fmtNum(elevM,1)} m</b> above sea level.</>)}
+          </p>
+        )}
+        {calcFull != null && (
+          <div class="callout a" style="margin-top:16px;">
+            <p style="margin-bottom:10px;"><b>Check any elevation yourself.</b> Type a level in feet above sea level — a ramp cutoff, a marina mark — to see how far it sits below full pool and in meters.</p>
+            <label for="elev-input" style="font-size:13px;color:var(--t2);">Elevation, ft above sea level</label>
+            <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-top:4px;">
+              <input id="elev-input" type="number" inputmode="decimal" value={String(elev)} style="width:140px;padding:8px 10px;font-size:15px;" />
+              <button id="elev-go" type="button" class="btn">See the gap</button>
+            </div>
+            <p id="elev-out" role="status" style="margin-top:10px;font-size:15px;"></p>
+          </div>
+        )}
+        {calcFull != null && (
+          <script is:inline define:vars={{ calcFull }}>
+            (function () {
+              var full = calcFull;
+              var input = document.getElementById('elev-input');
+              var out = document.getElementById('elev-out');
+              function run() {
+                var v = parseFloat(input.value);
+                if (!Number.isFinite(v)) { out.textContent = 'Enter an elevation in feet.'; return; }
+                var below = Math.round((full - v) * 100) / 100;
+                var meters = Math.round(v * 0.3048 * 100) / 100;
+                out.textContent = v.toFixed(2) + ' ft is ' + (below >= 0 ? below.toFixed(2) + ' ft below full pool' : Math.abs(below).toFixed(2) + ' ft above full pool') + ' (' + meters.toFixed(2) + ' m).';
+              }
+              var go = document.getElementById('elev-go');
+              if (go) go.addEventListener('click', run);
+              if (input) { input.addEventListener('input', run); run(); }
+            })();
+          </script>
+        )}
+      </section>
     )}
 
     <section class="section">
@@ -103,6 +187,13 @@ const toneHex = (t: string) => t === 'red' ? '#bb5a37' : t === 'amber' ? '#b07d1
         <p class="mut" style="color:var(--t2);">Recreation-booking links (charters, boat rentals) appear here once partner accounts are wired. See <a href="/disclosure">the disclosure page</a>.</p>
       )}
     </div>
+
+    <section class="section">
+      <h2 style="margin-bottom:8px;">Where these numbers come from</h2>
+      <p style="font-size:15px;color:var(--t1);max-width:660px;">
+        Every figure on this page is recomputed in code from a public government feed, never typed by hand. The live elevation is a <a href={lake.usgs_site ? `https://waterdata.usgs.gov/monitoring-location/${lake.usgs_site}/` : 'https://waterdata.usgs.gov/nwis/'}>USGS gage reading</a>{reading?.feed === 'CDEC' ? ' (via the California Data Exchange)' : ''}; feet below full pool, the operating-band gaps, the ~30-day change, and the meter conversion are all derived from that one validated reading and the published reference elevations. The reading is timestamped in the gauge above, and {SITE.name} pulls the same feed the operator reports to.
+      </p>
+    </section>
 
     <section class="section">
       <h2 style="margin-bottom:4px;">{lake.name} — questions</h2>

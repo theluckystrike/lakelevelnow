@@ -17,6 +17,17 @@ export const SITE = {
   contactEmail: 'hello@lakelevelnow.com',
 } as const;
 
+// Site author — the real, named person behind every reading. Surfaced as a visible
+// byline on data pages and as schema.org/Person JSON-LD (the H3 authorship signal).
+// Identity matches the /about page: solo developer, also behind zovo.one.
+export const AUTHOR = {
+  name: 'Mike',
+  role: 'Independent developer',
+  blurb: 'independent developer behind zovo.one',
+  url: '/about/',
+  sameAs: ['https://github.com/theluckystrike', 'https://zovo.one'],
+} as const;
+
 // Recreation-affiliate monetization (the make-it-right plan: recreation affiliate,
 // NOT display ads). Sign up for each, paste the tracked link, add /disclosure, redeploy.
 // Leaving REPLACE_ME blocks ship — the build's QA gate flags them so they are never silent.

@@ -1,7 +1,7 @@
 // SEO + GEO helpers: canonical URLs, OpenGraph, JSON-LD structured data.
 // Enriched per the GEO sprint: Organization.knowsAbout, source isBasedOn chain,
 // and speakable targeting for Quotable Authority Sentences (class="qas").
-import { SITE } from '../consts';
+import { SITE, AUTHOR } from '../consts';
 
 export function absUrl(path = '/'): string {
   let p = path.startsWith('/') ? path : `/${path}`;
@@ -62,6 +62,26 @@ export function websiteLd() {
     '@type': 'WebSite',
     name: SITE.name,
     url: SITE.url,
+  };
+}
+
+// JSON-LD: the named Person behind the site's readings (H3 authorship signal). Identity
+// matches the /about page — surfaced as a visible byline on data pages too.
+export function authorLd() {
+  return {
+    '@context': 'https://schema.org',
+    '@type': 'Person',
+    name: AUTHOR.name,
+    jobTitle: AUTHOR.role,
+    url: absUrl(AUTHOR.url),
+    description: `${AUTHOR.name}, ${AUTHOR.blurb}. Pulls every LakeLevelNow reading from the same USGS, CDEC, and USBR feeds the operators report to.`,
+    knowsAbout: [
+      'lake water levels',
+      'USGS water data',
+      'CDEC reservoir storage',
+      'reservoir operations',
+    ],
+    sameAs: AUTHOR.sameAs,
   };
 }
 

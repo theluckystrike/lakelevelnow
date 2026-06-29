@@ -124,7 +124,7 @@ async function fetchUSGS(site) {
     .sort((a, b) => (b.msl - a.msl) || (new Date(b.as_of) - new Date(a.as_of)));
   const r = ranked[0];
   if (!r) return null;
-  return { level_ft: r.level, storage_af: null, pct_full: null, as_of: r.as_of, series: r.series.slice(-SERIES_DAYS), msl: r.msl, param_label: r.label };
+  return { level_ft: r.level, storage_af: null, pct_full: null, as_of: r.as_of, series: downsampleDaily(r.series, SERIES_DAYS), delta_24h: delta24(r.series), msl: r.msl, param_label: r.label };
 }
 
 async function fetchCDEC(station, capacity) {
@@ -149,7 +149,7 @@ async function fetchCDEC(station, capacity) {
     storage_af,
     pct_full: pct,
     as_of,
-    series: src.slice(-SERIES_DAYS).map((r) => ({ t: String(r.date), v: Number(r.value), storage: !useElev })),
+    series: downsampleDaily(src.map((r) => ({ t: String(r.date), v: Number(r.value), storage: !useElev })), SERIES_DAYS),
     msl: useElev, // elevation sensor is msl; pure-storage fallback is not
     param_label: useElev ? 'reservoir elevation' : 'reservoir storage',
   };
@@ -191,7 +191,8 @@ async function fetchUSBR(siteName, capacity) {
     storage_af,
     pct_full: pct,
     as_of: dmyToIso(last.t),
-    series: data.slice(-SERIES_DAYS * 24).map((p) => ({ t: dmyToIso(p.t), v: Number(p.v) })),
+    series: downsampleDaily(data.map((p) => ({ t: dmyToIso(p.t), v: Number(p.v) })), SERIES_DAYS),
+    delta_24h: delta24(data.map((p) => ({ t: dmyToIso(p.t), v: Number(p.v) }))),
     msl: !!elev,
     param_label: elev ? 'reservoir elevation' : 'reservoir storage',
   };
@@ -211,16 +212,38 @@ function safeReadJSON(p, fallback) {
   }
 }
 
+// Collapse a high-frequency series (USGS IV 15-min, USBR hourly) to ONE reading
+// per local day, keeping the latest reading of each YYYY-MM-DD. This is what makes
+// a "30-day series" actually span 30 days — without it, .slice(-30) on 15-min data
+// is a 7.5-hour window mislabeled as a month, and every delta/change derived from it
+// (delta_24h, change30d) gets the wrong sign. CDEC is already daily (dur_code=D),
+// so this is a harmless no-op there. Preserves the optional {storage:true} flag.
+function downsampleDaily(points, maxDays) {
+  if (!Array.isArray(points) || points.length === 0) return [];
+  const byDay = new Map();
+  for (const p of points) {
+    const day = String(p.t).slice(0, 10);
+    const prev = byDay.get(day);
+    if (!prev || String(p.t) > String(prev.t)) byDay.set(day, p); // latest reading of the day
+  }
+  return [...byDay.values()].sort((a, b) => new Date(a.t) - new Date(b.t)).slice(-maxDays);
+}
+
 function delta24(series) {
   if (!series || series.length < 2) return null;
-  const a = series[series.length - 1].v;
-  // value ~24h earlier (or earliest available)
-  const lastT = new Date(series[series.length - 1].t).getTime();
-  let b = series[0].v;
-  for (let i = series.length - 2; i >= 0; i--) {
-    if (lastT - new Date(series[i].t).getTime() >= 20 * 3600000) { b = series[i].v; break; }
+  const last = series[series.length - 1];
+  const a = last.v;
+  const lastT = new Date(last.t).getTime();
+  // Pick the point closest to 24h before the last reading (must be >= 12h old so a
+  // same-day intra-day swing can't masquerade as a day's change). With a properly
+  // daily series this is yesterday's reading — a real ~24h delta, not a 7-hour one.
+  let best = null;
+  for (const p of series.slice(0, -1)) {
+    const ageH = (lastT - new Date(p.t).getTime()) / 3600000;
+    if (ageH >= 12 && (!best || Math.abs(ageH - 24) < Math.abs(best.ageH - 24))) best = { v: p.v, ageH };
   }
-  return Math.round((a - b) * 100) / 100;
+  if (!best) return null;
+  return Math.round((a - best.v) * 100) / 100;
 }
 
 // ---- main --------------------------------------------------------------------
@@ -294,7 +317,7 @@ for (const lk of seed) {
       pct_full: chosen.pct_full ?? null,
       feet_from_full,
       param: chosen.param_label,
-      delta_24h: delta24(chosen.series),
+      delta_24h: chosen.delta_24h != null ? chosen.delta_24h : delta24(chosen.series),
       series: chosen.series.slice(-SERIES_DAYS),
       as_of: chosen.as_of,
       feed: src?.feed ?? chosen.feed ?? null,

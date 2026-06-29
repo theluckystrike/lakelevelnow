@@ -87,18 +87,18 @@ export function status(pct: number | null, feetFromFull: number | null = null): 
 // "Can I launch?" interpretation from the level (the value-add the raw tables never give).
 // Heuristic against percent-full where available; else against feet-from-full.
 export function launchRead(r: Reading | undefined): { ok: boolean; text: string } {
-  if (!r || !r.fresh) return { ok: false, text: 'Live level feed connecting — check the operator page before you go.' };
+  if (!r || !r.fresh) return { ok: false, text: 'Live level feed connecting. Check the operator page before you go.' };
   if (r.pct_full != null) {
-    if (r.pct_full >= 60) return { ok: true, text: 'Lake is well within its normal pool — most boat ramps are usable. Confirm your specific ramp, which can close independently of lake level.' };
-    if (r.pct_full >= 35) return { ok: true, text: 'Lake is lower than normal — some ramps may be out of the water. Check ramp status before launching.' };
-    return { ok: false, text: 'Lake is well below normal pool — expect closed ramps and exposed hazards. Launching is risky; verify conditions.' };
+    if (r.pct_full >= 60) return { ok: true, text: 'Lake is well within its normal pool; most boat ramps are usable. Confirm your specific ramp, which can close independently of lake level.' };
+    if (r.pct_full >= 35) return { ok: true, text: 'Lake is lower than normal; some ramps may be out of the water. Check ramp status before launching.' };
+    return { ok: false, text: 'Lake is well below normal pool. Expect closed ramps and exposed hazards. Launching is risky; verify conditions.' };
   }
   if (r.feet_from_full != null) {
-    if (r.feet_from_full <= 3) return { ok: true, text: 'Lake is near full pool — most ramps should be open. Confirm your specific ramp before you go.' };
-    if (r.feet_from_full <= 12) return { ok: true, text: 'Lake is a few feet below full — some ramps may be out. Check ramp status before launching.' };
-    return { ok: false, text: 'Lake is well below full pool — expect closed ramps and exposed hazards. Verify conditions before launching.' };
+    if (r.feet_from_full <= 3) return { ok: true, text: 'Lake is near full pool; most ramps should be open. Confirm your specific ramp before you go.' };
+    if (r.feet_from_full <= 12) return { ok: true, text: 'Lake is a few feet below full; some ramps may be out. Check ramp status before launching.' };
+    return { ok: false, text: 'Lake is well below full pool. Expect closed ramps and exposed hazards. Verify conditions before launching.' };
   }
-  return { ok: false, text: 'Level data present but ramp condition can’t be inferred — check the operator’s ramp status page.' };
+  return { ok: false, text: 'Level data present but ramp condition can’t be inferred. Check the operator’s ramp status page.' };
 }
 
 // Stable HTML-escaped lake name for <title>/head.

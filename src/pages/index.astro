@@ -17,10 +17,10 @@ const movers = [...fresh]
 const states = byState();
 
 const faqs = [
-  { q: 'Where does the lake level data come from?', a: `Directly from public water-data feeds: USGS Water Services for most lakes and CDEC for California reservoirs. ${SITE.name} fetches each lake's own gage — the number you see is the same one the operator reports.` },
+  { q: 'Where does the lake level data come from?', a: `Directly from public water-data feeds: USGS Water Services for most lakes and CDEC for California reservoirs. ${SITE.name} fetches each lake's own gage, so the number you see is the same one the operator reports.` },
   { q: 'How often are the levels updated?', a: 'USGS instantaneous gages update every 15–60 minutes; CDEC storage is daily. Each reading carries a timestamp so you can see exactly when it was taken.' },
   { q: 'What does "percent full" mean?', a: 'Current storage divided by published full capacity, as a percentage. 100% means full pool; low percentages indicate drawdown for drought, flood control, or water supply.' },
-  { q: 'Is the level shown in real time?', a: 'Almost — it is the most recent reading from the source, usually minutes to hours old. Always confirm conditions with the lake operator before heading out.' },
+  { q: 'Is the level shown in real time?', a: 'Almost. It is the most recent reading from the source, usually minutes to hours old. Always confirm conditions with the lake operator before heading out.' },
 ];
 const ld = [authorLd(), breadcrumbLd([{ name: 'Home', path: '/' }])];
 ---

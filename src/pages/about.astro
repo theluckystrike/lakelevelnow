@@ -5,8 +5,8 @@ import { LAKES, freshLakes } from '../lib/lakes';
 import { breadcrumbLd } from '../lib/seo';
 
 const liveCount = freshLakes().length;
-const title = 'About — the developer behind LakeLevelNow';
-const description = 'LakeLevelNow is built solo by the independent developer behind zovo.one. Live US lake and reservoir levels from USGS and CDEC — free, fast, no ads.';
+const title = 'About: the developer behind LakeLevelNow';
+const description = 'LakeLevelNow is built solo by the independent developer behind zovo.one. Live US lake and reservoir levels from USGS and CDEC. Free, fast, no ads.';
 const ld = [breadcrumbLd([{ name: 'Home', path: '/' }, { name: 'About', path: '/about' }])];
 const ZOVO = 'https://zovo.one';
 const GH = 'https://github.com/theluckystrike';
@@ -53,7 +53,7 @@ const EMAIL = 'support@zovo.one';
     <section class="hero" style="padding-top:56px;">
       <div class="eyebrow">The person behind the tools</div>
       <h1 style="max-width:620px;">About LakeLevelNow</h1>
-      <p class="lead" style="max-width:600px;">I'm an independent developer and I build small, fast utility sites. LakeLevelNow is one of them. Check how full a lake is, see a 30-day trend, and get a straight answer on whether you can launch a boat — pulled straight from USGS and CDEC gages. No account, no pop-ups, no essay before the gauge loads.</p>
+      <p class="lead" style="max-width:600px;">I'm an independent developer and I build small, fast utility sites. LakeLevelNow is one of them. Check how full a lake is, see a 30-day trend, and get a straight answer on whether you can launch a boat, pulled straight from USGS and CDEC gages. No account, no pop-ups, no essay before the gauge loads.</p>
     </section>
 
     <div class="about-stats">
@@ -67,16 +67,16 @@ const EMAIL = 'support@zovo.one';
     <section class="section about-prose">
       <div class="section-k">What I build</div>
       <h2 class="section-h">One job per site, done fast</h2>
-      <p>Most lake-level sites are scraped tables that haven't been updated since the last flood season, or a single hobbyist page for one reservoir. I went the other way. Every lake pulls its own live gage — <b>USGS</b> for most, <b>CDEC</b> for California reservoirs — so the number you see is the same one the operator reports, stamped with exactly when it was taken.</p>
-      <p>The <b>"can I launch?"</b> read turns a raw elevation into the thing you actually wanted to know: will the ramp be in the water this weekend. It's a level-based guide, not a guarantee — always confirm the ramp with the operator before you go.</p>
+      <p>Most lake-level sites are scraped tables that haven't been updated since the last flood season, or a single hobbyist page for one reservoir. I went the other way. Every lake pulls its own live gage (<b>USGS</b> for most, <b>CDEC</b> for California reservoirs) so the number you see is the same one the operator reports, stamped with exactly when it was taken.</p>
+      <p>The <b>"can I launch?"</b> read turns a raw elevation into the thing you actually wanted to know: will the ramp be in the water this weekend. It's a level-based guide, not a guarantee. Always confirm the ramp with the operator before you go.</p>
       <p>I build the whole site on my own and work on it full time. That's the only reason the data stays fresh and a request for a new lake actually gets read the same day.</p>
     </section>
 
     <section class="section about-prose">
       <div class="section-k">The honest part</div>
       <h2 class="section-h">What's live, and what isn't</h2>
-      <p>Not every lake has a real-time gage. Some I wired up and the feed went dark; those show <b>"feed connecting"</b> and reference data — never a made-up number. A reading only counts as live if it's within seven days; anything older gets flagged "may be delayed" rather than passed off as current.</p>
-      <p>So I'd rather hear what's wrong than guess at it. Wrong gage, mislabeled lake, a reservoir you'd like added — send it over. Small fixes usually ship the same week, and the bigger ideas go on a list I actually work through.</p>
+      <p>Not every lake has a real-time gage. Some I wired up and the feed went dark; those show <b>"feed connecting"</b> and reference data, never a made-up number. A reading only counts as live if it's within seven days; anything older gets flagged "may be delayed" rather than passed off as current.</p>
+      <p>So I'd rather hear what's wrong than guess at it. Wrong gage, mislabeled lake, a reservoir you'd like added: send it over. Small fixes usually ship the same week, and the bigger ideas go on a list I actually work through.</p>
     </section>
 
     <section class="section">
@@ -98,7 +98,7 @@ const EMAIL = 'support@zovo.one';
         <div class="price featured">
           <div class="tier">Lifetime · best value</div>
           <div class="amt">$99 <small>once</small></div>
-          <div class="blurb">Every tool I build, for good. The zovo.one lifetime membership covers this site and everything else I make — no monthly fee, no per-tool charge.</div>
+          <div class="blurb">Every tool I build, for good. The zovo.one lifetime membership covers this site and everything else I make: no monthly fee, no per-tool charge.</div>
           <ul>
             <li>Lifetime access to every tool on zovo.one, now and not-yet-shipped</li>
             <li>The zovo.one Chrome extension and BeLikeNative, included</li>
@@ -112,7 +112,7 @@ const EMAIL = 'support@zovo.one';
     <section class="section">
       <div class="section-k">Where everything lives</div>
       <h2 class="section-h" style="margin-bottom:8px;">Tools, code, and a real inbox</h2>
-      <p class="about-prose" style="margin-bottom:20px;">The tools, the membership, and the rest of what I make all live on zovo.one. The code I can share sits on GitHub. Got a question before you spend anything? Email me and a real person — me — writes back.</p>
+      <p class="about-prose" style="margin-bottom:20px;">The tools, the membership, and the rest of what I make all live on zovo.one. The code I can share sits on GitHub. Got a question before you spend anything? Email me and a real person (me) writes back.</p>
       <div class="links-grid">
         <a class="link-card" href={ZOVO} rel="nofollow noopener"><div class="lt">zovo.one</div><div class="ld">The tools, the membership, and lifetime access in one place.</div></a>
         <a class="link-card" href={GH} rel="nofollow noopener"><div class="lt">GitHub</div><div class="ld">The code I keep in the open, plus what I'm tinkering with. github.com/theluckystrike</div></a>
@@ -123,7 +123,7 @@ const EMAIL = 'support@zovo.one';
     <section class="section try-cta">
       <div class="section-k" style="color:#34b8a0;">Try the tools first</div>
       <h2>The best way to decide is to use the thing</h2>
-      <p>Start with a lake you know — check how full it is and whether you can launch. Come back if you want the rest.</p>
+      <p>Start with a lake you know. Check how full it is and whether you can launch. Come back if you want the rest.</p>
       <a class="btn" href="/lakes">Browse the lakes →</a>
     </section>
 

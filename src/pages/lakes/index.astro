@@ -3,7 +3,7 @@ import BaseLayout from '../../layouts/BaseLayout.astro';
 import { SITE } from '../../consts';
 import { LAKES, byState, getReading, status, fmtNum, stateName } from '../../lib/lakes';
 import { breadcrumbLd } from '../../lib/seo';
-const title = 'All lakes — directory';
+const title = 'All lakes: directory';
 const description = `Every lake and reservoir ${SITE.name} tracks, with current level and percent full where a live gage is wired. Browse by state.`;
 const states = byState();
 const ld = [breadcrumbLd([{ name: 'Home', path: '/' }, { name: 'Lakes', path: '/lakes' }])];

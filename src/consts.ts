@@ -7,9 +7,9 @@ export const SITE = {
   domain: 'lakelevelnow.com',
   url: 'https://lakelevelnow.com',
   tagline:
-    'Live US lake and reservoir water levels — current level, percent full, and trend for lakes across the country, updated from USGS and state feeds.',
+    'Live US lake and reservoir water levels: current level, percent full, and trend for lakes across the country, updated from USGS and state feeds.',
   description:
-    'Live US lake and reservoir water levels — percent full, 30-day trend, and a plain-English launch read, from USGS and CDEC gages.',
+    'Live US lake and reservoir water levels: percent full, 30-day trend, and a plain-English launch read, from USGS and CDEC gages.',
   defaultOgImage: '/og-default.png',
   // Optional Google Search Console HTML-tag verification token (paste after 'content=').
   gscVerification: '',

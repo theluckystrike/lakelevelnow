@@ -1,7 +1,9 @@
 name: Deploy
 
-# Full pipeline: fetch live USGS/CDEC data -> build -> deploy to Cloudflare Workers ->
-# ping IndexNow. Runs on every push, weekly (keeps readings fresh), and manually.
+# Secondary preview: fetch live USGS/CDEC data -> build -> deploy to the
+# *.workers.dev Cloudflare Workers preview (see wrangler.toml). The apex
+# lakelevelnow.com is served by GitHub Pages via pages.yml, which also owns the
+# IndexNow ping. Runs on every push, weekly (keeps readings fresh), and manually.
 on:
   push:
     branches: [main]
@@ -41,5 +43,7 @@ jobs:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
 
-      - name: Submit to IndexNow
-        run: npm run indexnow
+      # NOTE: no IndexNow ping here. This workflow deploys only the *.workers.dev
+      # secondary preview (see wrangler.toml) — it does NOT serve the apex, so it
+      # must not submit lakelevelnow.com URLs. IndexNow lives in pages.yml, the
+      # workflow that actually publishes the apex.

@@ -82,10 +82,13 @@ Co-Authored-By: Claude <noreply@anthropic.com>"
 # --- push (auth via gh keyring so it works headless under launchd) ------------
 # Drop any invalid GITHUB_TOKEN from the calling env so gh reads the keyring.
 # OAuth tokens (gho_) require username=x-access-token over HTTPS, NOT the
-# account handle — using the handle here caused "Invalid username or token".
+# account handle — using the handle caused "Invalid username or token".
+# The leading `credential.helper=` RESETS the helper list so a stale token in
+# the global `store` helper can't be tried (and rejected) before ours.
 KT="$(env -u GITHUB_TOKEN -u GH_TOKEN gh auth token 2>/dev/null || true)"
 if [ -n "$KT" ]; then
-  git -c "credential.helper=!f(){ echo username=x-access-token; echo \"password=$KT\"; };f" \
+  git -c credential.helper= \
+      -c "credential.helper=!f(){ echo username=x-access-token; echo \"password=$KT\"; };f" \
       push -u origin main >>"$LOG" 2>&1 \
     || { log "ERROR: git push failed (network) — data committed locally only"; exit 1; }
 else

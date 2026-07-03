@@ -21,7 +21,18 @@ import { dirname, join } from 'node:path';
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
 const HOST = 'lakelevelnow.com';
 const ORIGIN = `https://${HOST}`;
-const ENDPOINT = 'https://api.indexnow.org/indexnow';
+// IndexNow is a shared network (submit-to-one propagates to all). We post to
+// several participating engines directly so a submission genuinely SUCCEEDS
+// even while one engine's per-domain trust gate is still warming up. Verified
+// 2026-07-03: Yandex 202, Seznam 200, Yep 200 accept this domain's key today;
+// Bing/api.indexnow.org return 403 UserForbiddedToAccessSite until Bing trusts
+// the domain (it then starts accepting with zero changes here).
+const ENGINES = [
+  'https://api.indexnow.org/indexnow', // canonical aggregator (feeds Bing when trusted)
+  'https://yandex.com/indexnow',
+  'https://search.seznam.cz/indexnow',
+  'https://indexnow.yep.com/indexnow',
+];
 const UA = 'lakelevelnow-indexnow/1.0 (+https://lakelevelnow.com)';
 
 // --- Named constants (NASA: no magic numbers, every bound explicit) ---
@@ -94,12 +105,12 @@ async function collectUrls() {
   return { shards, urls: [...seen] };
 }
 
-/** One POST with a hard timeout. Returns {status,text}; status 0 on network error. */
-async function postOnce(body) {
+/** One POST to a given engine with a hard timeout. status 0 on network error. */
+async function postOnce(endpoint, body) {
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), TIMEOUT_MS);
   try {
-    const res = await fetch(ENDPOINT, {
+    const res = await fetch(endpoint, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json; charset=utf-8', 'User-Agent': UA },
       body: JSON.stringify(body),
@@ -120,21 +131,29 @@ async function postOnce(body) {
   }
 }
 
-/** Bounded retry with capped exponential backoff. Returns true on success. */
-async function submitWithRetry(body) {
+/** Submit to ONE engine with bounded retry + backoff. Returns true on 2xx. */
+async function submitToEngine(endpoint, body) {
+  const name = new URL(endpoint).host;
   for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt++) {
-    const { status, text } = await postOnce(body);
+    const { status, text } = await postOnce(endpoint, body);
     if (SUCCESS_STATUS.has(status)) {
-      info(`OK (${status}) — ${body.urlList.length} URLs submitted (attempt ${attempt}).`);
+      info(`${name}: OK (${status}) — ${body.urlList.length} URLs (attempt ${attempt}).`);
       return true;
     }
     const retryable = status === 0 || RETRYABLE_STATUS.has(status);
-    warn(`attempt ${attempt}/${MAX_ATTEMPTS} got status ${status}: ${String(text).slice(0, 200)}`);
-    if (!retryable || attempt === MAX_ATTEMPTS) return false;
-    const delay = Math.min(BACKOFF_BASE_MS * 2 ** (attempt - 1), BACKOFF_CEILING_MS);
-    await sleep(delay);
+    warn(`${name}: attempt ${attempt}/${MAX_ATTEMPTS} status ${status}: ${String(text).slice(0, 120)}`);
+    // 403 UserForbiddedToAccessSite is a permanent per-domain trust gate for
+    // that engine right now — don't burn retries on it.
+    if (status === 403 || !retryable || attempt === MAX_ATTEMPTS) return false;
+    await sleep(Math.min(BACKOFF_BASE_MS * 2 ** (attempt - 1), BACKOFF_CEILING_MS));
   }
   return false;
+}
+
+/** Fan out to every participating engine. Returns count that accepted. */
+async function submitAll(body) {
+  const results = await Promise.all(ENGINES.map((e) => submitToEngine(e, body)));
+  return results.filter(Boolean).length;
 }
 
 async function main() {
@@ -146,13 +165,15 @@ async function main() {
   if (collected.urls.length === 0) skip('no URLs parsed from live sitemaps');
 
   const body = { host: HOST, key, keyLocation: `https://${HOST}/${key}.txt`, urlList: collected.urls };
-  info(`submitting ${collected.urls.length} URLs for ${HOST} (from ${collected.shards.join(', ')})…`);
+  info(`submitting ${collected.urls.length} URLs for ${HOST} to ${ENGINES.length} engines (from ${collected.shards.join(', ')})…`);
 
-  const ok = await submitWithRetry(body);
-  if (!ok) {
-    warn('all attempts failed; search engines will still crawl via sitemap.');
+  const accepted = await submitAll(body);
+  if (accepted > 0) {
+    info(`SUCCESS: ${accepted}/${ENGINES.length} IndexNow engines accepted the submission.`);
+  } else {
+    warn('no engine accepted this round; search engines will still crawl via sitemap.');
   }
-  // Best-effort ping: always succeed so a crawl hint never blocks a live deploy.
+  // Best-effort ping: always exit 0 so a crawl hint never blocks a live deploy.
   process.exit(0);
 }
 

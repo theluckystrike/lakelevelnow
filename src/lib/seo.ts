@@ -30,9 +30,12 @@ export function buildMeta({ title, description, path = '/', ogImage, noindex }: 
 // primary public feed — the GEO differentiator vs unverified competitor claims.
 const SOURCE_USGS = { '@type': 'CreativeWork', name: 'USGS Water Services', url: 'https://waterservices.usgs.gov/' };
 const SOURCE_CDEC = { '@type': 'CreativeWork', name: 'California Data Exchange (CDEC)', url: 'https://cdec.water.ca.gov/' };
+const SOURCE_USBR = { '@type': 'CreativeWork', name: 'U.S. Bureau of Reclamation Lower Colorado River Operations', url: 'https://www.usbr.gov/lc/region/g4000/riverops/webreports/hourlyweb.json' };
 export function sourceFor(feed?: string | null) {
-  if (feed === 'CDEC') return SOURCE_CDEC;
-  if (feed === 'USGS') return SOURCE_USGS;
+  const f = (feed || '').toLowerCase();
+  if (f === 'cdec') return SOURCE_CDEC;
+  if (f === 'usbr') return SOURCE_USBR;
+  if (f === 'usgs') return SOURCE_USGS;
   return null;
 }
 

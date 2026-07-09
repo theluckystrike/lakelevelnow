@@ -2,7 +2,7 @@
 import BaseLayout from '../../layouts/BaseLayout.astro';
 import LakeGauge from '../../components/LakeGauge.astro';
 import { SITE, AFFILIATES } from '../../consts';
-import { LAKES, getReading, launchRead, status, fmtNum, stateName, POWELL_BAND, changeOverSeries, liveBandBelowFullPct } from '../../lib/lakes';
+import { LAKES, getReading, launchRead, status, fmtNum, stateName, POWELL_BAND, changeOverSeries, liveBandBelowFullPct, feedLabel } from '../../lib/lakes';
 import { lakeLd, authorLd, breadcrumbLd, speakableLd } from '../../lib/seo';
 
 export function getStaticPaths() {
@@ -23,7 +23,7 @@ const description = `${lake.name} water level and percent full: live USGS/CDEC g
 // Quotable Authority Sentence (GEO): declarative, specific, sourced, <25 words.
 let qas = '';
 if (live) {
-  const feedName = reading!.feed === 'CDEC' ? 'CDEC' : 'USGS';
+  const feedName = feedLabel(reading!.feed) || 'USGS';
   if (reading!.pct_full != null) {
     qas = `${lake.name} is ${reading!.pct_full}% full as of ${asOfFmt}, per ${feedName} data${reading!.feet_from_full != null ? `; ${fmtNum(Math.abs(reading!.feet_from_full),1)} ft ${reading!.feet_from_full > 0 ? 'below' : 'above'} full pool` : ''}.`;
   } else if (reading!.level_ft != null) {
@@ -36,7 +36,7 @@ const faqs = [
       ? (reading!.pct_full != null ? `${lake.name} is about ${reading!.pct_full}% full as of ${asOfFmt}.` : `The most recent reading puts ${lake.name} at ${fmtNum(reading!.level_ft,1)} feet.`)
       : `${lake.name}'s live gage is being connected to ${SITE.name}. Full-pool reference is ${lake.full_pool_ft!=null?fmtNum(lake.full_pool_ft,0)+' ft':'listed on the operator page'}; check the operator (${lake.operator}) for the current figure.` },
   { q: `Can I launch a boat at ${lake.name}?`, a: `${launchRead(reading).text} Individual ramps open and close on their own schedules and on local hazards.` },
-  { q: `Where does ${lake.name}'s level come from?`, a: `${SITE.name} pulls it from the ${reading?.feed || 'operator'} public water-data feed${reading?.feed === 'CDEC' ? ' (California Data Exchange)' : ''}. The reading is timestamped in the gauge above.` },
+  { q: `Where does ${lake.name}'s level come from?`, a: `${SITE.name} pulls it from the ${feedLabel(reading?.feed) || 'operator'} public water-data feed${feedLabel(reading?.feed) === 'CDEC' ? ' (California Data Exchange)' : feedLabel(reading?.feed) === 'USBR' ? ' (U.S. Bureau of Reclamation)' : ''}. The reading is timestamped in the gauge above.` },
   { q: `Who operates ${lake.name}?`, a: `${lake.name}, on the ${lake.river}, is operated by ${lake.operator}. Reservoir releases, flood-control drawdowns, and water-supply decisions are theirs.` },
 ];
 
@@ -69,6 +69,20 @@ const liveBandPct = band ? liveBandBelowFullPct(elev, band.fullPoolFt, band.dead
 const change30d = changeOverSeries(reading?.series);
 const elevM = elev != null ? Math.round(elev * 0.3048 * 10000) / 10000 : null;
 const calcFull = fullPool; // exposed to the inline calculator script
+
+// Per-feed source attribution for the "Where these numbers come from" section.
+// The prior hard-coded "USGS gage reading" was misleading on CDEC and USBR
+// lakes (Mead, Shasta, Oroville, etc.).
+const feedHref = feedLabel(reading?.feed) === 'CDEC' && lake.cdec_id
+  ? `https://cdec.water.ca.gov/dynamicapp/staMeta?station_id=${lake.cdec_id}`
+  : feedLabel(reading?.feed) === 'USBR'
+    ? 'https://www.usbr.gov/lc/region/g4000/riverops/webreports/hourlyweb.json'
+    : lake.usgs_site
+      ? `https://waterdata.usgs.gov/monitoring-location/${lake.usgs_site}/`
+      : 'https://waterdata.usgs.gov/nwis/';
+const feedNoun = feedLabel(reading?.feed) === 'CDEC' ? 'CDEC gage reading'
+  : feedLabel(reading?.feed) === 'USBR' ? 'USBR reservoir reading'
+    : 'USGS gage reading';
 ---
 <BaseLayout title={title} description={description} path={`/lake/${slug}`} jsonLd={ld}>
   <div class="container">
@@ -82,7 +96,7 @@ const calcFull = fullPool; // exposed to the inline calculator script
     <div style="padding-top:16px;">
       <h1>{lake.name} water level</h1>
       <p style="font-size:14px;color:var(--t2);margin-top:8px;">{lake.river} · {stName} · operated by {lake.operator}</p>
-      <p style="font-size:13px;color:var(--t2);margin-top:6px;">By <a href="/about/">Mike</a>, independent developer behind <a href="https://zovo.one" rel="noopener">zovo.one</a>. Readings pulled live from the same {reading?.feed || 'USGS'} feed the operator reports to.</p>
+      <p style="font-size:13px;color:var(--t2);margin-top:6px;">By <a href="/about/">Mike</a>, independent developer behind <a href="https://zovo.one" rel="noopener">zovo.one</a>. Readings pulled live from the same {feedLabel(reading?.feed) || 'USGS'} feed the operator reports to.</p>
     </div>
 
     {qas && <p class="qas" data-keyword={`${lake.name} water level`} style="font-size:15px;color:var(--t1);margin-top:14px;max-width:660px;font-weight:500;">{qas}</p>}
@@ -91,8 +105,8 @@ const calcFull = fullPool; // exposed to the inline calculator script
       <LakeGauge lake={lake} reading={reading!} />
     ) : (
       <div class="callout a" style="margin-top:18px;">
-        <p><b>Live Level feed Connecting</b>: {lake.name}'s gage ({lake.feed || 'the operator feed'}) is being wired. Reference data below; for the current figure, see the
-        <a href={reading?.feed === 'CDEC' ? `https://cdec.water.ca.gov/dynamicapp/staMeta?station_id=${lake.cdec_id}` : (lake.usgs_site ? `https://waterdata.usgs.gov/monitoring-location/${lake.usgs_site}/` : '#')}>operator's page</a>.</p>
+        <p><b>Live Level feed Connecting</b>: {lake.name}'s gage ({feedLabel(lake.feed) || 'the operator feed'}) is being wired. Reference data below; for the current figure, see the
+        <a href={feedLabel(reading?.feed) === 'CDEC' && lake.cdec_id ? `https://cdec.water.ca.gov/dynamicapp/staMeta?station_id=${lake.cdec_id}` : feedLabel(reading?.feed) === 'USBR' ? 'https://www.usbr.gov/lc/region/g4000/riverops/webreports/hourlyweb.json' : (lake.usgs_site ? `https://waterdata.usgs.gov/monitoring-location/${lake.usgs_site}/` : '#')}>operator's page</a>.</p>
       </div>
     )}
 
@@ -168,7 +182,7 @@ const calcFull = fullPool; // exposed to the inline calculator script
         <div class="row"><div class="k">Dam / operator</div><div class="vv">{lake.operator}</div></div>
         <div class="row"><div class="k">River / basin</div><div class="vv">{lake.river}</div></div>
         <div class="row"><div class="k">State</div><div class="vv">{stName}</div></div>
-        <div class="row"><div class="k">Data feed</div><div class="vv">{reading?.feed || lake.feed || '—'}</div></div>
+        <div class="row"><div class="k">Data feed</div><div class="vv">{feedLabel(reading?.feed) || feedLabel(lake.feed) || '—'}</div></div>
       </div>
     </section>
 
@@ -191,7 +205,7 @@ const calcFull = fullPool; // exposed to the inline calculator script
     <section class="section">
       <h2 style="margin-bottom:8px;">Where these numbers come from</h2>
       <p style="font-size:15px;color:var(--t1);max-width:660px;">
-        Every figure on this page is recomputed in code from a public government feed, never typed by hand. The live elevation is a <a href={lake.usgs_site ? `https://waterdata.usgs.gov/monitoring-location/${lake.usgs_site}/` : 'https://waterdata.usgs.gov/nwis/'}>USGS gage reading</a>{reading?.feed === 'CDEC' ? ' (via the California Data Exchange)' : ''}; feet below full pool, the operating-band gaps, the ~30-day change, and the meter conversion are all derived from that one validated reading and the published reference elevations. The reading is timestamped in the gauge above, and {SITE.name} pulls the same feed the operator reports to.
+        Every figure on this page is recomputed in code from a public government feed, never typed by hand. The live elevation is a <a href={feedHref}>{feedNoun}</a>; feet below full pool, the operating-band gaps, the ~30-day change, and the meter conversion are all derived from that one validated reading and the published reference elevations. The reading is timestamped in the gauge above, and {SITE.name} pulls the same feed the operator reports to.
       </p>
     </section>
 

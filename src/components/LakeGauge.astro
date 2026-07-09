@@ -2,7 +2,7 @@
 // LakeGauge — the live reading, above the fold. 270° arc gauge + 3×2 stat grid +
 // "Can I launch?" verdict + ~30-day sparkline. Pure server-rendered SVG (no client JS).
 import type { LakeEntry, Reading } from '../lib/lakes';
-import { launchRead, status, fmtNum } from '../lib/lakes';
+import { launchRead, status, fmtNum, feedLabel } from '../lib/lakes';
 
 interface Props { lake: LakeEntry; reading: Reading }
 const { lake, reading } = Astro.props;
@@ -62,7 +62,7 @@ const deltaUp = (reading.delta_24h ?? 0) >= 0;
       {reading.feet_from_full != null && <span style="font-size:13px;color:var(--t2);">{fmtNum(Math.abs(reading.feet_from_full),1)} ft {reading.feet_from_full > 0 ? 'below' : 'above'} full pool</span>}
     </div>
     <div class="src-foot">
-      <span class="src-badge">{reading.feed}</span>
+      <span class="src-badge">{feedLabel(reading.feed) || reading.feed}</span>
       <span style="font-size:11px;color:var(--t3);">{reading.storage_af != null ? `${fmtNum(reading.storage_af,0)} acre-ft · ` : ''}updated {asOf}</span>
     </div>
   </div>

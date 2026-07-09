@@ -40,6 +40,20 @@ export function getLake(slug: string): LakeEntry | undefined {
   return LAKES.find((l) => l.slug === slug);
 }
 
+// Canonical feed-label normalizer. levels.json stores feed lowercase ('usgs' /
+// 'cdec' / 'usbr'); the prior exact-match on uppercase 'CDEC' mislabeled every
+// CDEC and USBR lake as 'USGS' in the QAS, FAQ, JSON-LD source chain, and
+// operator-page link. Single source of truth — call this everywhere a feed
+// identity is rendered or branched on. Returns null for unknown/missing feeds.
+export function feedLabel(feed?: string | null): 'CDEC' | 'USBR' | 'USGS' | null {
+  if (!feed) return null;
+  const f = feed.toLowerCase();
+  if (f === 'cdec') return 'CDEC';
+  if (f === 'usbr') return 'USBR';
+  if (f === 'usgs') return 'USGS';
+  return null;
+}
+
 export function getReading(slug: string): Reading | undefined {
   return LEVELS[slug];
 }

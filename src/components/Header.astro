@@ -1,8 +1,17 @@
 ---
 // Sticky top navigation — dark slate (#16282f), LakeLevelNow wordmark (teal "Level").
+// Two nav renderings, one visible per breakpoint (global.css):
+//   >=768px  inline links (4 items, within the responsive spec's 6-item inline limit)
+//   <768px   native <details> hamburger — zero JS, keyboard accessible, 48px tap
+//            targets; open/close is browser-native so it cannot wedge in a bad state.
 import { SITE } from '../consts';
-import { LAKES } from '../lib/lakes';
-const liveCount = LAKES.filter((l) => true).length; // registry count
+
+const NAV = [
+  { href: '/', label: 'Live lakes' },
+  { href: '/lakes', label: 'All lakes' },
+  { href: '/lakes#CA', label: 'California' },
+  { href: '/about', label: 'About & data' },
+];
 ---
 <header class="site-header">
   <div class="container">
@@ -10,10 +19,15 @@ const liveCount = LAKES.filter((l) => true).length; // registry count
       <span class="w">Lake</span><span class="b">Level</span><span class="w">Now</span>
     </a>
     <nav class="main" aria-label="Primary">
-      <a href="/">Live lakes</a>
-      <a href="/lakes">All lakes</a>
-      <a href="/lakes#CA">California</a>
-      <a href="/about">About &amp; data</a>
+      {NAV.map((i) => <a href={i.href}>{i.label}</a>)}
     </nav>
+    <details class="nav-m">
+      <summary aria-label="Menu">
+        <span class="bars" aria-hidden="true"><i></i><i></i><i></i></span>
+      </summary>
+      <nav aria-label="Primary">
+        {NAV.map((i) => <a href={i.href}>{i.label}</a>)}
+      </nav>
+    </details>
   </div>
 </header>

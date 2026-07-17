@@ -46,6 +46,29 @@ nav.main { display: flex; gap: 28px; align-items: center; }
 nav.main a { color: rgba(255,255,255,.55); font-size: 13px; font-weight: 500; }
 nav.main a:hover { color: #fff; text-decoration: none; }
 
+/* Mobile menu (<768px). The desktop inline nav overflows any phone width (4 links at
+   28px gaps + brand + 64px container padding needs ~600px), so below 768px the links
+   move into a native <details> hamburger: zero JS, keyboard accessible, browser-owned
+   open/close state. Tap targets are 48px per the touch spec; the header stays sticky
+   (never fixed) and keeps its 54px height, under the 56px mobile maximum. */
+.nav-m { display: none; }
+@media (max-width: 767px) {
+  .site-header .container { position: relative; padding-left: max(16px, env(safe-area-inset-left)); padding-right: max(16px, env(safe-area-inset-right)); }
+  nav.main { display: none; }
+  .nav-m { display: block; }
+  .nav-m summary { list-style: none; display: flex; align-items: center; justify-content: center; width: 48px; height: 48px; margin-right: -12px; cursor: pointer; border-radius: var(--r-sm); -webkit-tap-highlight-color: transparent; }
+  .nav-m summary::-webkit-details-marker { display: none; }
+  .nav-m summary:focus-visible { outline: 2px solid #34b8a0; outline-offset: 2px; }
+  .nav-m .bars { display: inline-flex; flex-direction: column; gap: 5px; }
+  .nav-m .bars i { display: block; width: 20px; height: 2px; background: rgba(255,255,255,.85); border-radius: 2px; transition: transform .15s ease, opacity .15s ease; }
+  .nav-m[open] .bars i:nth-child(1) { transform: translateY(7px) rotate(45deg); }
+  .nav-m[open] .bars i:nth-child(2) { opacity: 0; }
+  .nav-m[open] .bars i:nth-child(3) { transform: translateY(-7px) rotate(-45deg); }
+  .nav-m nav { position: absolute; left: 0; right: 0; top: 100%; background: var(--ink); border-bottom: 1px solid rgba(255,255,255,.1); box-shadow: 0 12px 24px rgba(22,40,47,.25); }
+  .nav-m nav a { display: flex; align-items: center; min-height: 48px; padding: 0 max(20px, env(safe-area-inset-left)); color: rgba(255,255,255,.85); font-size: 15px; font-weight: 500; border-top: 1px solid rgba(255,255,255,.08); }
+  .nav-m nav a:hover, .nav-m nav a:focus-visible { color: #fff; background: rgba(255,255,255,.06); text-decoration: none; }
+}
+
 /* Hero */
 .hero { padding: 72px 0 0; }
 .hero .live-badge { display: inline-flex; align-items: center; gap: 8px; margin-bottom: 24px; }

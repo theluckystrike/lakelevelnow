@@ -21,9 +21,6 @@ export default defineConfig({
       filter: (page) => !page.includes('/404'),
       changefreq: 'weekly',
       priority: 0.7,
-      // Static pages served from public/ are outside Astro's route set, so the
-      // sitemap integration can't see them — list them here or they never get crawled.
-      customPages: ['https://lakelevelnow.com/lake/lake-powell/depth/'],
     }),
     mdx(),
   ],

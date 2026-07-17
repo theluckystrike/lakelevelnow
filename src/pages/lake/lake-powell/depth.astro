@@ -1,0 +1,235 @@
+---
+// /lake/lake-powell/depth/ — live water depth at Glen Canyon Dam.
+// Content originated from the portfolio-seo-pipeline run 2026-07-16-fix2 (gates L1-L12
+// green, H1 information gain 0.6) and was converted from the static artifact to a live
+// Astro page so the depth recomputes from src/data on every weekly build, exactly like
+// the sibling lake pages. Every displayed number is a deterministic transform of the
+// validated reading + published constants; nothing is typed by hand.
+import BaseLayout from '../../../layouts/BaseLayout.astro';
+import { LAKES, getReading, fmtNum, POWELL_BAND, changeOverSeries, feedLabel } from '../../../lib/lakes';
+import { authorLd, breadcrumbLd, speakableLd, absUrl } from '../../../lib/seo';
+
+const lake = LAKES.find((l) => l.slug === 'lake-powell')!;
+const reading = getReading('lake-powell');
+const live = !!(reading && reading.fresh);
+const elev = live ? reading!.level_ft : null;
+
+const band = POWELL_BAND;
+const BED = band.fullPoolFt - band.maxDepthFullPoolFt; // 3700 - 561 = 3139, both NPS-published
+const depth = elev != null ? Math.round((elev - BED) * 10) / 10 : null;
+const depthM = depth != null ? Math.round(depth * 0.3048 * 100) / 100 : null;
+const depthPct = depth != null ? Math.round((depth / band.maxDepthFullPoolFt) * 10000) / 100 : null;
+const feetBelowFull = elev != null ? Math.round((band.fullPoolFt - elev) * 10) / 10 : null;
+const aboveMinPower = elev != null ? Math.round((elev - band.minPowerPoolFt) * 10) / 10 : null;
+const aboveDead = elev != null ? Math.round((elev - band.deadPoolFt) * 10) / 10 : null;
+const aboveRecordLow = elev != null ? Math.round((elev - band.recordLowFt) * 100) / 100 : null;
+const bandPct = elev != null ? Math.round(((band.fullPoolFt - elev) / (band.fullPoolFt - band.deadPoolFt)) * 10000) / 100 : null;
+const change30d = changeOverSeries(reading?.series);
+const delta24h = reading?.delta_24h ?? null;
+const asOfFmt = reading?.as_of ? new Date(reading.as_of).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : '';
+const asOfIso = reading?.as_of ? String(reading.as_of).slice(0, 10) : '';
+
+const PATH = '/lake/lake-powell/depth/';
+const GAGE = 'https://waterdata.usgs.gov/monitoring-location/09379900/';
+const NPS = 'https://www.nps.gov/glca/faqs.htm';
+const USBR_PDF = 'https://www.usbr.gov/lc/region/g4000/crss5Year.pdf';
+const USBR_CSV = 'https://www.usbr.gov/uc/water/hydrodata/reservoir_data/919/csv/49.csv';
+
+const title = 'Lake Powell water depth today from the live USGS gage';
+const description = live && depth != null
+  ? `Lake Powell is ${fmtNum(depth, 1)} feet deep at Glen Canyon Dam today, a number computed from the live USGS surface elevation instead of the full-pool figure most articles repeat.`
+  : 'Lake Powell\'s water depth at Glen Canyon Dam, computed from the live USGS surface elevation instead of the full-pool figure most articles repeat.';
+
+// Quotable Authority Sentence (GEO), same pattern as the lake pages.
+const qas = live && depth != null
+  ? `Lake Powell is ${fmtNum(depth, 1)} ft deep at Glen Canyon Dam as of ${asOfFmt}, computed from the USGS gage reading of ${fmtNum(elev, 1)} ft.`
+  : '';
+
+const articleLd = {
+  '@context': 'https://schema.org',
+  '@type': 'Article',
+  headline: 'How deep is Lake Powell right now?',
+  description: 'Lake Powell\'s live water depth at Glen Canyon Dam, recomputed in code from the USGS surface elevation on every build.',
+  url: absUrl(PATH),
+  mainEntityOfPage: absUrl(PATH),
+  datePublished: '2026-07-17',
+  dateModified: asOfIso || '2026-07-17',
+  author: { '@type': 'Person', name: 'Mike', url: absUrl('/about/'), description: 'Independent developer behind zovo.one, building small fast utility sites including LakeLevelNow. Works on LakeLevelNow full-time.' },
+  publisher: { '@type': 'Organization', name: 'LakeLevelNow', url: absUrl('/') },
+};
+const datasetLd = live && depth != null ? {
+  '@context': 'https://schema.org',
+  '@type': 'Dataset',
+  name: 'Lake Powell water depth and elevation, live and derived',
+  description: 'Live Lake Powell surface elevation from USGS site 09379900 with code-derived depth at Glen Canyon Dam, operating-band distances, 30-day change, and record-low comparison, recomputed on every build.',
+  url: absUrl(PATH),
+  variableMeasured: [
+    { '@type': 'PropertyValue', name: 'Surface elevation', value: String(elev), unitText: 'ft above MSL' },
+    { '@type': 'PropertyValue', name: '30-day elevation change', value: change30d != null ? String(change30d) : 'n/a', unitText: 'ft' },
+    { '@type': 'PropertyValue', name: 'Water depth at Glen Canyon Dam', value: String(depth), unitText: 'ft' },
+    { '@type': 'PropertyValue', name: 'Water depth at Glen Canyon Dam in meters', value: String(depthM), unitText: 'm' },
+    { '@type': 'PropertyValue', name: 'Depth as a share of full-pool depth', value: String(depthPct), unitText: 'percent' },
+    { '@type': 'PropertyValue', name: 'Feet below full pool', value: String(feetBelowFull), unitText: 'ft' },
+    { '@type': 'PropertyValue', name: 'Feet above minimum power pool', value: String(aboveMinPower), unitText: 'ft' },
+    { '@type': 'PropertyValue', name: 'Feet above dead pool', value: String(aboveDead), unitText: 'ft' },
+    { '@type': 'PropertyValue', name: 'Share of the live band below full pool', value: String(bandPct), unitText: 'percent' },
+    { '@type': 'PropertyValue', name: 'Record-low elevation since first fill', value: String(band.recordLowFt), unitText: 'ft above MSL' },
+    { '@type': 'PropertyValue', name: 'Feet above the record low', value: String(aboveRecordLow), unitText: 'ft' },
+    { '@type': 'PropertyValue', name: 'Full pool elevation', value: String(band.fullPoolFt), unitText: 'ft above MSL' },
+    { '@type': 'PropertyValue', name: 'Maximum depth at the dam at full pool', value: String(band.maxDepthFullPoolFt), unitText: 'ft' },
+    { '@type': 'PropertyValue', name: 'Streambed elevation at the dam', value: String(BED), unitText: 'ft above MSL' },
+  ],
+  creator: { '@type': 'Organization', name: 'U.S. Geological Survey', url: GAGE },
+  dateModified: asOfIso || '2026-07-17',
+  isAccessibleForFree: true,
+} : null;
+
+const ld = [articleLd, ...(datasetLd ? [datasetLd] : []), speakableLd(PATH), authorLd(),
+  breadcrumbLd([{ name: 'Home', path: '/' }, { name: 'Lakes', path: '/lakes' }, { name: 'Lake Powell', path: '/lake/lake-powell' }, { name: 'Water depth', path: PATH }])];
+
+const faqs = [
+  { q: 'How deep is Lake Powell today?', live: true,
+    a: live && depth != null ? `${fmtNum(depth, 1)} ft at Glen Canyon Dam, from the live USGS gage reading of ${fmtNum(elev, 1)} ft. Depth varies across the lake; the dam is the deepest point.` : 'The live gage feed is reconnecting; the depth recomputes from it on every build. Depth varies across the lake; the dam is the deepest point.' },
+  { q: 'Why do most articles say Lake Powell is 561 feet deep?', live: false,
+    a: 'Because the National Park Service publishes that figure as the maximum depth at Glen Canyon Dam at full pool. The number is real. It just describes a reservoir filled to 3,700 ft, not the surface the gage reads today.' },
+  { q: 'Where does the reading come from?', live: false,
+    a: 'Parameter code 62614, the reservoir water-surface elevation series at USGS site 09379900, the Lake Powell gage at Glen Canyon Dam, Arizona. The value arrives in feet above datum.' },
+  { q: 'What is full pool?', live: false,
+    a: `A surface elevation of ${fmtNum(band.fullPoolFt, 0)} ft above mean sea level. At that line Powell runs ${band.lengthMi} miles long with a capacity of ${band.fullCapacityMaf} million acre-feet.` },
+  { q: 'What is minimum power pool?', live: false,
+    a: `${fmtNum(band.minPowerPoolFt, 0)} ft, the elevation below which Glen Canyon Dam can no longer generate hydroelectricity.${aboveMinPower != null ? ` Today's buffer above it is ${fmtNum(aboveMinPower, 1)} ft.` : ''}` },
+  { q: 'What is dead pool?', live: false,
+    a: `${fmtNum(band.deadPoolFt, 0)} ft, the elevation below which water can no longer reach the outlet works.${aboveDead != null ? ` Today's buffer above it is ${fmtNum(aboveDead, 1)} ft.` : ''}` },
+];
+---
+<BaseLayout title={title} description={description} path={PATH} jsonLd={ld}>
+  <div class="container">
+
+    <div class="crumbs" style="padding-top:20px;">
+      <a href="/">Home</a><span class="sep">›</span>
+      <a href="/lakes">Lakes</a><span class="sep">›</span>
+      <a href="/lake/lake-powell/">Lake Powell</a><span class="sep">›</span>
+      <span>Water depth</span>
+    </div>
+
+    <div style="padding-top:16px;">
+      <h1>How deep is Lake Powell right now?</h1>
+      <p style="font-size:13px;color:var(--t2);margin-top:8px;">By <a href="/about/">Mike</a>, independent developer behind <a href="https://zovo.one" rel="noopener">zovo.one</a>.{asOfFmt && ` Data checked ${asOfFmt}.`}</p>
+    </div>
+
+    {qas && <p class="qas" data-keyword="lake powell water depth" style="font-size:15px;color:var(--t1);margin-top:14px;max-width:660px;font-weight:500;">{qas}</p>}
+
+    <section class="section" style="padding-top:24px;">
+      {live && depth != null ? (
+        <div class="card" style="max-width:660px;">
+          <div style="font-size:11px;font-weight:600;color:var(--teal);text-transform:uppercase;letter-spacing:.08em;margin-bottom:6px;">Today's depth at Glen Canyon Dam</div>
+          <div style="font-size:40px;font-weight:700;letter-spacing:-.03em;color:var(--t1);line-height:1.05;">{fmtNum(depth,1)} ft <span style="font-size:18px;font-weight:400;color:var(--t2);">({fmtNum(depthM,1)} m)</span></div>
+          <p style="font-size:14px;margin-top:10px;">That comes to {fmtNum(depthPct,1)} percent of the full-pool depth. Sources for this card are <a href={GAGE}>USGS site 09379900</a> for the live elevation and the <a href={NPS}>NPS Glen Canyon FAQ</a> for the published constants, as of {asOfFmt}.</p>
+        </div>
+      ) : (
+        <div class="callout a">
+          <p>Live feed reconnecting. The depth recomputes from the <a href={GAGE}>USGS gage</a> on every build; the published reference figures below don't change with the level.</p>
+        </div>
+      )}
+      <p style="font-size:15px;color:var(--t1);max-width:660px;margin-top:16px;">
+        Most pages answering this question hand you the <a href={NPS}>{fmtNum(band.maxDepthFullPoolFt,0)} ft maximum depth</a> the National Park Service publishes for a reservoir at full pool. When the surface sits below the full-pool line, that maximum stops describing the water actually behind the dam. So this page computes the real figure on every build from the live surface elevation at <a href={GAGE}>USGS gage 09379900</a>{elev != null && `, which reads ${fmtNum(elev,1)} feet above sea level`}, minus the streambed elevation at the dam. Nobody types the number.
+      </p>
+      <p style="font-size:15px;color:var(--t1);max-width:660px;">
+        The math has two inputs. Take the surface elevation from <a href={GAGE}>the gage</a> and subtract the streambed elevation at the dam, {fmtNum(BED,0)} ft. The streambed figure is itself the difference of two published <a href={NPS}>NPS numbers</a>, the {fmtNum(band.fullPoolFt,0)} ft full-pool elevation minus the {fmtNum(band.maxDepthFullPoolFt,0)} ft maximum depth at the dam at full pool.
+      </p>
+      <p style="font-size:14px;color:var(--t2);max-width:660px;">
+        Depth varies across the lake, and this reading describes the deepest point, at the dam wall. Powell runs <a href={NPS}>{band.lengthMi} miles at full pool</a>, and the farther you get from the dam, the less this number applies.
+      </p>
+    </section>
+
+    <section class="section">
+      <h2 style="margin-bottom:14px;">Where today's level sits in the operating band</h2>
+      {elev != null && (
+        <p style="font-size:15px;color:var(--t1);max-width:660px;margin-bottom:14px;">
+          The surface is {fmtNum(feetBelowFull,1)} ft below the <a href={NPS}>{fmtNum(band.fullPoolFt,0)} ft full-pool line</a>. For hydropower, the number that matters is the gap to minimum power pool: today's reading sits {fmtNum(aboveMinPower,1)} ft above <a href={USBR_PDF}>that line at {fmtNum(band.minPowerPoolFt,0)} ft</a>, the elevation below which Glen Canyon Dam can no longer generate hydroelectricity. The harder floor is <a href={USBR_PDF}>dead pool at {fmtNum(band.deadPoolFt,0)} ft</a>, the elevation below which water can no longer reach the outlet works; today's surface holds {fmtNum(aboveDead,1)} ft above it.
+        </p>
+      )}
+      <div class="def-table" style="max-width:660px;">
+        <div class="row"><div class="k">Full pool ({fmtNum(band.fullPoolFt,0)} ft) · <a href={NPS}>NPS</a></div><div class="vv">{fmtNum(band.maxDepthFullPoolFt,0)} ft deep at the dam</div></div>
+        <div class="row"><div class="k">Today · <a href={GAGE}>USGS 09379900</a></div><div class="vv">{depth != null ? `${fmtNum(depth,1)} ft deep at the dam` : '—'}</div></div>
+        <div class="row"><div class="k">Record low since first fill ({fmtNum(band.recordLowFt,2)} ft, 2023-04-13) · <a href={USBR_CSV}>USBR archive</a></div><div class="vv">{fmtNum(band.recordLowFt - BED,1)} ft deep at the dam</div></div>
+        <div class="row"><div class="k">Minimum power pool ({fmtNum(band.minPowerPoolFt,0)} ft) · <a href={USBR_PDF}>USBR</a></div><div class="vv">{fmtNum(band.minPowerPoolFt - BED,0)} ft deep at the dam</div></div>
+        <div class="row"><div class="k">Dead pool ({fmtNum(band.deadPoolFt,0)} ft) · <a href={USBR_PDF}>USBR</a></div><div class="vv">{fmtNum(band.deadPoolFt - BED,0)} ft deep at the dam</div></div>
+      </div>
+      <p style="font-size:14px;color:var(--t2);max-width:660px;margin-top:12px;">
+        Each depth is the landmark elevation minus the {fmtNum(BED,0)} ft streambed.{bandPct != null && ` One honest way to place today's level uses elevation alone: the surface has moved ${fmtNum(bandPct,1)} percent of the way down the band that runs from full pool to dead pool. Read that as an elevation share, not a volume share; a true percent full needs the reservoir's area-capacity curve, which this page doesn't compute, so we don't publish one.`}
+      </p>
+    </section>
+
+    <section class="section">
+      <h2 style="margin-bottom:8px;">How the depth is changing</h2>
+      <p style="font-size:15px;color:var(--t1);max-width:660px;">
+        Every foot the surface moves is a foot of depth at the dam, so elevation changes read directly as depth changes.
+        {delta24h != null && (<> Over the last 24 hours the <a href={GAGE}>gage</a> moved {delta24h === 0 ? 'not at all' : delta24h > 0 ? `up ${fmtNum(delta24h,1)} ft` : `down ${fmtNum(Math.abs(delta24h),1)} ft`}.</>)}
+        {change30d != null && (<> Across the roughly 30-day series the surface {change30d === 0 ? 'held flat' : change30d > 0 ? `rose ${fmtNum(change30d,1)} ft` : `fell ${fmtNum(Math.abs(change30d),1)} ft`}. Plenty of pages quote a level; few recompute a validated month-over-month delta on every build, and that is exactly what this figure is.</>)}
+      </p>
+      <p style="font-size:15px;color:var(--t1);max-width:660px;">
+        {aboveRecordLow != null && (<>Today's surface sits {fmtNum(aboveRecordLow,2)} ft above the record low since the reservoir first filled, {fmtNum(band.recordLowFt,2)} ft on April 13, 2023, from <a href={USBR_CSV}>Reclamation's daily pool-elevation archive</a>, </>)}
+        {aboveRecordLow == null && (<>The record low since the reservoir first filled is {fmtNum(band.recordLowFt,2)} ft, set on April 13, 2023, per <a href={USBR_CSV}>Reclamation's daily pool-elevation archive</a> and </>)}
+        documented by <a href="https://earthobservatory.nasa.gov/images/151274/lake-powell-hits-new-low">NASA Earth Observatory</a>.
+      </p>
+    </section>
+
+    <section class="section">
+      <h2 style="margin-bottom:8px;">Check the depth for any surface elevation</h2>
+      <div class="callout a" style="max-width:660px;">
+        <p style="margin-bottom:10px;">Type a surface elevation in feet. The page answers with the water depth at the dam for that surface, the feet below full pool, and the live-band share, using the same formulas every number above uses.</p>
+        <label for="depth-input" style="font-size:13px;color:var(--t2);">Surface elevation, ft above sea level</label>
+        <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-top:4px;">
+          <input id="depth-input" type="number" inputmode="decimal" step="any" value={elev != null ? String(elev) : ''} placeholder="3523.6" style="width:140px;padding:8px 10px;font-size:15px;" />
+          <button id="depth-go" type="button" class="btn">See the depth</button>
+        </div>
+        <p id="depth-out" role="status" aria-live="polite" style="margin-top:10px;font-size:15px;"></p>
+        <noscript><p>The checker needs JavaScript. Every other number on this page is precomputed and shows without it.</p></noscript>
+      </div>
+      <script is:inline define:vars={{ FULL: band.fullPoolFt, BED, DEAD: band.deadPoolFt }}>
+        (function () {
+          var band = FULL - DEAD;
+          var input = document.getElementById('depth-input');
+          var out = document.getElementById('depth-out');
+          function run() {
+            var e = parseFloat(input.value);
+            if (!Number.isFinite(e)) { out.textContent = 'Type an elevation to see its numbers.'; return; }
+            if (e <= BED) { out.textContent = 'An elevation of ' + e.toFixed(1) + ' ft sits at or below the streambed at the dam (' + BED + ' ft), so there would be no water depth to report at the dam.'; return; }
+            var depth = e - BED;
+            var below = FULL - e;
+            var pct = (below / band) * 100;
+            if (e > FULL) { out.textContent = 'At a surface elevation of ' + e.toFixed(1) + ' ft the lake would sit above full pool. The water at the dam would be ' + depth.toFixed(1) + ' ft deep, ' + (0 - below).toFixed(1) + ' ft over the full-pool line.'; return; }
+            out.textContent = 'At a surface elevation of ' + e.toFixed(1) + ' ft, the water at Glen Canyon Dam would be ' + depth.toFixed(1) + ' ft deep, ' + below.toFixed(1) + ' ft below full pool, and ' + pct.toFixed(1) + ' percent of the way down the band from full pool toward dead pool.';
+          }
+          var go = document.getElementById('depth-go');
+          if (go) go.addEventListener('click', run);
+          if (input) { input.addEventListener('input', run); if (input.value) run(); }
+        })();
+      </script>
+    </section>
+
+    <section class="section">
+      <h2 style="margin-bottom:8px;">Getting on the water</h2>
+      <p style="font-size:15px;color:var(--t1);max-width:660px;">
+        A depth reading at the dam can't tell you whether the ramp you're towing to actually reaches the water. Ramp status depends on where the waterline sits against that one ramp, and it shifts as the level moves. Use the depth and the trend here as a starting point, with the <a href="/lake/lake-powell/">live level page</a> for the full gauge, then check the ramp itself with the people who run it. Levels are point-in-time readings and can lag real conditions, confirm ramp and hazard status with the lake operator before heading out.
+      </p>
+    </section>
+
+    <section class="section">
+      <h2 style="margin-bottom:4px;">Questions about Lake Powell's depth</h2>
+      {faqs.map((f) => <div class="faq-item"><div class="q">{f.q}</div><div class="a">{f.a}</div></div>)}
+    </section>
+
+    <section class="section" style="padding-bottom:48px;">
+      <h2 style="margin-bottom:8px;">Where these numbers come from</h2>
+      <p style="font-size:15px;color:var(--t1);max-width:660px;">
+        Every figure on this page starts at <a href={GAGE}>USGS NWIS Instantaneous Values, site 09379900</a>, parameter 62614, and the USGS NWIS Daily Values series for the same site serves as the cross-check. Published reference points come from the <a href={NPS}>NPS Glen Canyon FAQ</a> and <a href={USBR_PDF}>Reclamation's five-year projection tables</a>, and the record low comes from <a href={USBR_CSV}>Reclamation's daily pool-elevation archive</a>.
+      </p>
+      <p style="font-size:15px;color:var(--t1);max-width:660px;">
+        Code recomputes every displayed number from the validated reading at build time; none of them is typed by hand. Feed bindings are pinned in the site's sources file, so this page can't quietly pick up a different gage. I run LakeLevelNow full-time, and I pull readings from the same public USGS, CDEC, and USBR feeds the operators report to. A fetch that fails keeps the prior reading and labels it "may be delayed" instead of dropping the lake, and a reading older than the seven-day freshness window is never labeled live.
+      </p>
+    </section>
+
+  </div>
+</BaseLayout>

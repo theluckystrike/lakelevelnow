@@ -147,6 +147,10 @@ export const POWELL_BAND = {
   recordLowFt: 3519.92,
   fullCapacityMaf: 27,
   lengthMi: 186,
+  // NPS Glen Canyon FAQ: "Its maximum depth (at Glen Canyon Dam) is 561 feet (171 m)".
+  // Streambed at the dam = fullPoolFt - maxDepthFullPoolFt = 3139 ft; current depth at
+  // the dam = live elevation - 3139. Verified against the live NPS page 2026-07-16.
+  maxDepthFullPoolFt: 561,
 };
 
 // Net change across a reading's series (last minus first). The series spans ~30 days

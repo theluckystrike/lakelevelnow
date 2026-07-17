@@ -120,11 +120,14 @@ const feedNoun = feedLabel(reading?.feed) === 'CDEC' ? 'CDEC gage reading'
           <div class="row"><div class="k">Full pool ({fmtNum(band.fullPoolFt,0)} ft)</div><div class="vv">{feetBelowFull != null ? `${fmtNum(feetBelowFull,1)} ft below` : '—'}</div></div>
           <div class="row"><div class="k">Minimum power pool ({fmtNum(band.minPowerPoolFt,0)} ft)</div><div class="vv">{aboveMinPower != null ? `${fmtNum(aboveMinPower,1)} ft above` : '—'}</div></div>
           <div class="row"><div class="k">Dead pool ({fmtNum(band.deadPoolFt,0)} ft)</div><div class="vv">{aboveDead != null ? `${fmtNum(aboveDead,1)} ft above` : '—'}</div></div>
-          <div class="row"><div class="k">All-time low ({fmtNum(band.recordLowFt,2)} ft, 2023-04-13)</div><div class="vv">{aboveRecordLow != null ? `${fmtNum(aboveRecordLow,1)} ft above` : '—'}</div></div>
+          <div class="row"><div class="k">Record low since first fill ({fmtNum(band.recordLowFt,2)} ft, 2023-04-13)</div><div class="vv">{aboveRecordLow != null ? `${fmtNum(aboveRecordLow,1)} ft above` : '—'}</div></div>
           <div class="row"><div class="k">Share of live-storage band below full</div><div class="vv">{liveBandPct != null ? `${fmtNum(liveBandPct,1)}%` : '—'}</div></div>
         </div>
         <p style="font-size:14px;color:var(--t2);max-width:660px;margin-top:12px;">
           The band share is an elevation-distance fraction, not a storage-volume percentage. Reservoirs widen toward the top, so volume is not linear with elevation.
+        </p>
+        <p style="font-size:15px;color:var(--t1);max-width:660px;margin-top:12px;">
+          Wondering how deep the water actually is at the dam right now? <a href="/lake/lake-powell/depth/">How deep is Lake Powell right now?</a> computes it live from this same gage.
         </p>
       </section>
     )}

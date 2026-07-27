@@ -1,0 +1,103 @@
+---
+// DepthGauge — the depth-page analogue of LakeGauge. Same 270° arc gauge, same 3×2 stat
+// grid, same ~30-day sparkline, and deliberately the SAME class names (lake-hero,
+// gauge-card, stat-grid, chartcard, ...) so it inherits the identical global.css styling
+// rather than re-declaring any of it. The only difference is what it measures: depth at
+// the dam instead of percent full. Pure server-rendered SVG, no client JS.
+import type { Reading } from '../lib/lakes';
+import { status, fmtNum, feedLabel } from '../lib/lakes';
+
+interface Props {
+  reading: Reading;
+  /** Streambed elevation at the dam; depth = surface elevation - bed. */
+  bed: number;
+  /** Published maximum depth at the dam at full pool (the gauge's 100% mark). */
+  maxDepthFt: number;
+  fullPoolFt: number;
+  lakeName: string;
+}
+const { reading, bed, maxDepthFt, fullPoolFt, lakeName } = Astro.props;
+
+const elev = reading.level_ft;
+const depth = elev != null ? Math.round((elev - bed) * 10) / 10 : null;
+const depthM = depth != null ? Math.round(depth * 0.3048 * 10) / 10 : null;
+const depthPct = depth != null ? Math.round((depth / maxDepthFt) * 1000) / 10 : null;
+const feetBelowFull = elev != null ? Math.round((fullPoolFt - elev) * 10) / 10 : null;
+
+// Tone comes from the same status() the sibling lake page uses, so the pill on this page
+// and the pill on /lake/lake-powell/ never disagree about how the reservoir is doing.
+const st = status(reading.pct_full, reading.feet_from_full);
+const tone = st.tone === 'green' || st.tone === 'cyan' ? '#0b7d6a' : st.tone === 'amber' ? '#b07d1a' : st.tone === 'red' ? '#bb5a37' : '#8a949a';
+
+// 270° arc geometry, identical to LakeGauge.
+const R = 80, C = 2 * Math.PI * R, ARC = C * 0.75;
+const fillArc = depthPct != null ? (Math.max(0, Math.min(100, depthPct)) / 100) * ARC : 0;
+const trackDash = `${ARC} ${C}`;
+const fillDash = `${fillArc} ${C}`;
+
+const asOf = reading.as_of ? new Date(reading.as_of).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : '';
+
+// Sparkline over the ~30-day series, converted from elevation to depth. Every foot the
+// surface moves is a foot of depth at the dam, so this is the elevation series offset by
+// the streambed — the same shape, labelled in the unit this page is about.
+const series = (reading.series || []).map((s) => s.v).filter((v) => Number.isFinite(v)).map((v) => v - bed);
+let spark = '', sparkLo = '', sparkHi = '';
+if (series.length >= 2) {
+  const mn = Math.min(...series), mx = Math.max(...series), rg = (mx - mn) || 1;
+  const W = 100, H = 100;
+  const sx = (i: number) => (i / (series.length - 1)) * W;
+  const sy = (v: number) => H - ((v - mn) / rg) * 80;
+  const area = `M0,${H} L${series.map((v, i) => `${sx(i).toFixed(2)},${sy(v).toFixed(2)}`).join(' L')} L${W},${H} Z`;
+  const endY = sy(series[series.length - 1]);
+  spark = `<path d="${area}" fill="${tone}" fill-opacity="0.07"></path><polyline points="${series.map((v, i) => `${sx(i).toFixed(2)},${sy(v).toFixed(2)}`).join(' ')}" fill="none" stroke="${tone}" stroke-width="1.5" vector-effect="non-scaling-stroke" stroke-linejoin="round"></polyline><circle cx="100" cy="${endY.toFixed(2)}" r="3" fill="${tone}" vector-effect="non-scaling-stroke"></circle>`;
+  sparkLo = fmtNum(mn, 1);
+  sparkHi = fmtNum(mx, 1);
+}
+const deltaUp = (reading.delta_24h ?? 0) >= 0;
+---
+
+<div class="lake-hero">
+  <div class="gauge-card">
+    <svg class="gauge" viewBox="0 0 200 200" role="img" aria-label={depth != null ? `${lakeName} is ${depth} feet deep at the dam` : `${lakeName} depth unavailable`}>
+      <circle cx="100" cy="100" r={R} fill="none" stroke="#ebe7e0" stroke-width="13" stroke-linecap="round" stroke-dasharray={trackDash} transform="rotate(135 100 100)"></circle>
+      <circle cx="100" cy="100" r={R} fill="none" stroke={tone} stroke-width="13" stroke-linecap="round" stroke-dasharray={fillDash} transform="rotate(135 100 100)" style="animation: gaugeIn 1.2s ease-out;"></circle>
+      {depth != null ? (
+        <>
+          <text x="100" y="92" text-anchor="middle" style="font-family:'Space Grotesk',sans-serif;font-size:38px;font-weight:700;fill:#16282f;letter-spacing:-0.03em;">{fmtNum(depth, 1)}</text>
+          <text x="100" y="116" text-anchor="middle" style="font-family:'Space Grotesk',sans-serif;font-size:14px;font-weight:500;fill:#5c6a70;">ft deep</text>
+        </>
+      ) : (
+        <text x="100" y="105" text-anchor="middle" style="font-family:'Space Grotesk',sans-serif;font-size:16px;font-weight:500;fill:#5c6a70;">no reading</text>
+      )}
+    </svg>
+    <div class="sub-line">
+      <span class={`pill ${st.tone === 'red' ? 'red' : st.tone === 'amber' ? 'amber' : 'green'}`}>{st.label}</span>
+      {depthPct != null && <span style="font-size:13px;color:var(--t2);">{fmtNum(depthPct, 1)}% of the {fmtNum(maxDepthFt, 0)} ft full-pool depth</span>}
+    </div>
+    <div class="src-foot">
+      <span class="src-badge">{feedLabel(reading.feed) || reading.feed}</span>
+      <span style="font-size:11px;color:var(--t3);">at Glen Canyon Dam · updated {asOf}</span>
+    </div>
+  </div>
+
+  <div class="stat-grid">
+    {depth != null && <div class="stat-cell"><div class="v" style={`color:${tone}`}>{fmtNum(depth, 1)}</div><div class="l">depth at the dam (ft)</div></div>}
+    {depthM != null && <div class="stat-cell"><div class="v">{fmtNum(depthM, 1)}</div><div class="l">depth at the dam (m)</div></div>}
+    {depthPct != null && <div class="stat-cell"><div class="v">{fmtNum(depthPct, 1)}%</div><div class="l">of full-pool depth</div></div>}
+    {reading.delta_24h != null && <div class="stat-cell"><div class={`v ${deltaUp ? 'up' : 'down'}`}>{deltaUp ? '+' : '−'}{fmtNum(Math.abs(reading.delta_24h), 2)}</div><div class="l">24-hour change (ft)</div></div>}
+    {feetBelowFull != null && <div class="stat-cell"><div class="v down">{fmtNum(feetBelowFull, 1)}</div><div class="l">ft below full pool</div></div>}
+    <div class="stat-cell"><div class="v">{fmtNum(maxDepthFt, 0)}</div><div class="l">max depth at full pool (ft)</div></div>
+  </div>
+</div>
+
+{series.length >= 2 && (
+  <div class="chartcard">
+    <div class="ch-head">~30-day trend · depth at the dam (ft)</div>
+    <svg class="spark" viewBox="0 0 100 100" preserveAspectRatio="none" role="img" aria-label="30-day depth trend" set:html={spark} />
+    <div class="ch-foot">
+      <span class="lo">{sparkHi}</span>
+      <span><span class="now">{fmtNum(series[series.length - 1], 1)}</span> <span style="font-size:11px;font-weight:500;color:var(--t3);">now</span></span>
+      <span class="lo">{sparkLo}</span>
+    </div>
+  </div>
+)}

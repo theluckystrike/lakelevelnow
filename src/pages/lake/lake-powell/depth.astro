@@ -35,7 +35,15 @@ const NPS = 'https://www.nps.gov/glca/faqs.htm';
 const USBR_PDF = 'https://www.usbr.gov/lc/region/g4000/crss5Year.pdf';
 const USBR_CSV = 'https://www.usbr.gov/uc/water/hydrodata/reservoir_data/919/csv/49.csv';
 
-const title = 'Lake Powell water depth today from the live USGS gage';
+// Retargeted 2026-07-27 from "lake powell water depth" to the phrasing that actually earns
+// impressions. Search Console over the 90 days to 2026-07-27: "lake powell water depth" got
+// ZERO impressions, while "how deep is lake powell right now" got 53 at position 8.21,
+// "deepest part of lake powell" 8 at 5.88, and "how deep is lake powell at its deepest point"
+// 8 at 6.75 — every one of them at 0.00% CTR. The page was ranking for a question it did not
+// ask in its own title. Leading with the live figure gives the searcher the answer in the SERP.
+const title = live && depth != null
+  ? `How deep is Lake Powell right now? ${fmtNum(depth, 1)} ft today`
+  : 'How deep is Lake Powell right now?';
 const description = live && depth != null
   ? `Lake Powell is ${fmtNum(depth, 1)} feet deep at Glen Canyon Dam today, a number computed from the live USGS surface elevation instead of the full-pool figure most articles repeat.`
   : 'Lake Powell\'s water depth at Glen Canyon Dam, computed from the live USGS surface elevation instead of the full-pool figure most articles repeat.';

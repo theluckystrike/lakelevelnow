@@ -6,7 +6,11 @@ on:
   push:
     branches: [main]
   schedule:
-    - cron: '23 9 * * 1'
+    # Daily, not weekly. Titles and meta descriptions now carry the live reading, and the
+    # depth page's H1 says "right now", so a Monday-only build meant the SERP could show a
+    # figure up to seven days old — exactly the freshness limit rules.md forbids labelling
+    # as live. Validated 2026-07-27: the page read "Jul 20" while the gage read 3,522.6 ft.
+    - cron: '23 9 * * *'
   workflow_dispatch: {}
 
 permissions:

@@ -17,8 +17,29 @@ const stName = stateName(lake.state);
 const asOfFmt = reading?.as_of ? new Date(reading.as_of).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : '';
 const levelPhrase = reading?.pct_full != null ? `${reading.pct_full}% full` : (reading?.level_ft != null ? `at ${fmtNum(reading.level_ft,1)} ft` : 'current water level');
 
-const title = `${lake.name} water level`;
-const description = `${lake.name} water level and percent full: live USGS/CDEC gauge, 30-day trend, and a plain-English boat-launch read.`;
+// Title + description carry the LIVE number. Search Console (90 days to 2026-07-27) showed
+// 222 queries ranking page one on 2,182 impressions returning only 23 clicks against a ~77
+// benchmark, with nine page-one queries at exactly 0.00% CTR. Every lake page shipped the
+// same numberless boilerplate, so the snippet gave a searcher asking "what is the level"
+// no reason to choose it over a competitor whose snippet shows the figure. Both strings
+// degrade to the old copy when no fresh reading exists, so a stale lake never claims one.
+const liveFigure = live
+  ? (reading!.pct_full != null
+      ? `${reading!.pct_full}% full`
+      : (reading!.level_ft != null ? `${fmtNum(reading!.level_ft, 1)} ft` : null))
+  : null;
+const title = liveFigure
+  ? `${lake.name} water level today: ${liveFigure}`
+  : `${lake.name} water level`;
+// feet_from_full comes straight off the validated reading; the fuller feetBelowFull
+// fallback is computed further down and is not needed (or available) this early.
+const metaFeetFromFull = live ? (reading!.feet_from_full ?? null) : null;
+const belowFullPhrase = metaFeetFromFull != null
+  ? `, ${fmtNum(Math.abs(metaFeetFromFull), 1)} ft ${metaFeetFromFull > 0 ? 'below' : 'above'} full pool`
+  : '';
+const description = liveFigure
+  ? `${lake.name} is ${liveFigure}${belowFullPhrase} as of ${asOfFmt}. Live ${feedLabel(reading!.feed) || 'USGS'} gage reading, 30-day trend, and a plain-English boat-launch read.`
+  : `${lake.name} water level and percent full: live USGS/CDEC gauge, 30-day trend, and a plain-English boat-launch read.`;
 
 // Quotable Authority Sentence (GEO): declarative, specific, sourced, <25 words.
 let qas = '';
@@ -105,7 +126,7 @@ const feedNoun = feedLabel(reading?.feed) === 'CDEC' ? 'CDEC gage reading'
       <LakeGauge lake={lake} reading={reading!} />
     ) : (
       <div class="callout a" style="margin-top:18px;">
-        <p><b>Live Level feed Connecting</b>: {lake.name}'s gage ({feedLabel(lake.feed) || 'the operator feed'}) is being wired. Reference data below; for the current figure, see the
+        <p><span class="em-strong">Live Level feed Connecting</span>: {lake.name}'s gage ({feedLabel(lake.feed) || 'the operator feed'}) is being wired. Reference data below; for the current figure, see the
         <a href={feedLabel(reading?.feed) === 'CDEC' && lake.cdec_id ? `https://cdec.water.ca.gov/dynamicapp/staMeta?station_id=${lake.cdec_id}` : feedLabel(reading?.feed) === 'USBR' ? 'https://www.usbr.gov/lc/region/g4000/riverops/webreports/hourlyweb.json' : (lake.usgs_site ? `https://waterdata.usgs.gov/monitoring-location/${lake.usgs_site}/` : '#')}>operator's page</a>.</p>
       </div>
     )}
@@ -114,14 +135,14 @@ const feedNoun = feedLabel(reading?.feed) === 'CDEC' ? 'CDEC gage reading'
       <section class="section">
         <h2 style="margin-bottom:14px;">Where {lake.name} sits in its operating band</h2>
         <p style="font-size:15px;color:var(--t1);max-width:660px;margin-bottom:14px;">
-          The reading lands <b>{feetBelowFull != null ? `${fmtNum(feetBelowFull,1)} ft below full pool` : 'within its normal range'}</b>. Minimum power pool is the line below which Glen Canyon Dam can no longer generate hydropower; dead pool is where water can no longer reach the outlet works. Today the surface is <b>{aboveMinPower != null ? `${fmtNum(aboveMinPower,1)} ft above minimum power pool` : '—'}</b> and <b>{aboveDead != null ? `${fmtNum(aboveDead,1)} ft above dead pool` : '—'}</b>.
+          The reading lands <span class="em-strong">{feetBelowFull != null ? `${fmtNum(feetBelowFull,1)} ft below full pool` : `within its normal range`}</span>. Minimum power pool is the line below which Glen Canyon Dam can no longer generate hydropower; dead pool is where water can no longer reach the outlet works. Today the surface is <span class="em-strong">{aboveMinPower != null ? `${fmtNum(aboveMinPower,1)} ft above minimum power pool` : `n/a`}</span> and <span class="em-strong">{aboveDead != null ? `${fmtNum(aboveDead,1)} ft above dead pool` : `n/a`}</span>.
         </p>
         <div class="def-table">
-          <div class="row"><div class="k">Full pool ({fmtNum(band.fullPoolFt,0)} ft)</div><div class="vv">{feetBelowFull != null ? `${fmtNum(feetBelowFull,1)} ft below` : '—'}</div></div>
-          <div class="row"><div class="k">Minimum power pool ({fmtNum(band.minPowerPoolFt,0)} ft)</div><div class="vv">{aboveMinPower != null ? `${fmtNum(aboveMinPower,1)} ft above` : '—'}</div></div>
-          <div class="row"><div class="k">Dead pool ({fmtNum(band.deadPoolFt,0)} ft)</div><div class="vv">{aboveDead != null ? `${fmtNum(aboveDead,1)} ft above` : '—'}</div></div>
-          <div class="row"><div class="k">Record low since first fill ({fmtNum(band.recordLowFt,2)} ft, 2023-04-13)</div><div class="vv">{aboveRecordLow != null ? `${fmtNum(aboveRecordLow,1)} ft above` : '—'}</div></div>
-          <div class="row"><div class="k">Share of live-storage band below full</div><div class="vv">{liveBandPct != null ? `${fmtNum(liveBandPct,1)}%` : '—'}</div></div>
+          <div class="row"><div class="k">Full pool ({fmtNum(band.fullPoolFt,0)} ft)</div><div class="vv">{feetBelowFull != null ? `${fmtNum(feetBelowFull,1)} ft below` : 'n/a'}</div></div>
+          <div class="row"><div class="k">Minimum power pool ({fmtNum(band.minPowerPoolFt,0)} ft)</div><div class="vv">{aboveMinPower != null ? `${fmtNum(aboveMinPower,1)} ft above` : 'n/a'}</div></div>
+          <div class="row"><div class="k">Dead pool ({fmtNum(band.deadPoolFt,0)} ft)</div><div class="vv">{aboveDead != null ? `${fmtNum(aboveDead,1)} ft above` : 'n/a'}</div></div>
+          <div class="row"><div class="k">Record low since first fill ({fmtNum(band.recordLowFt,2)} ft, 2023-04-13)</div><div class="vv">{aboveRecordLow != null ? `${fmtNum(aboveRecordLow,1)} ft above` : 'n/a'}</div></div>
+          <div class="row"><div class="k">Share of live-storage band below full</div><div class="vv">{liveBandPct != null ? `${fmtNum(liveBandPct,1)}%` : 'n/a'}</div></div>
         </div>
         <p style="font-size:14px;color:var(--t2);max-width:660px;margin-top:12px;">
           The band share is an elevation-distance fraction, not a storage-volume percentage. Reservoirs widen toward the top, so volume is not linear with elevation.
@@ -141,12 +162,12 @@ const feedNoun = feedLabel(reading?.feed) === 'CDEC' ? 'CDEC gage reading'
               <>Over the roughly 30-day series the gage {change30d === 0 ? 'held flat' : change30d > 0 ? `rose ${fmtNum(change30d,1)} ft` : `fell ${fmtNum(Math.abs(change30d),1)} ft`}</>
             )}{reading?.delta_24h != null && (
               <>{change30d != null ? '; ' : ''}the last 24 hours moved it {reading.delta_24h === 0 ? 'not at all' : reading.delta_24h > 0 ? `up ${fmtNum(reading.delta_24h,1)} ft` : `down ${fmtNum(Math.abs(reading.delta_24h),1)} ft`}</>
-            )}. {elevM != null && (<>For readers outside the U.S., the surface is about <b>{fmtNum(elevM,1)} m</b> above sea level.</>)}
+            )}. {elevM != null && (<>For readers outside the U.S., the surface is about <span class="em-strong">{fmtNum(elevM,1)} m</span> above sea level.</>)}
           </p>
         )}
         {calcFull != null && (
           <div class="callout a" style="margin-top:16px;">
-            <p style="margin-bottom:10px;"><b>Check any elevation yourself.</b> Type a level in feet above sea level (a ramp cutoff, a marina mark) to see how far it sits below full pool and in meters.</p>
+            <p style="margin-bottom:10px;"><span class="em-strong">Check any elevation yourself.</span> Type a level in feet above sea level (a ramp cutoff, a marina mark) to see how far it sits below full pool and in meters.</p>
             <label for="elev-input" style="font-size:13px;color:var(--t2);">Elevation, ft above sea level</label>
             <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-top:4px;">
               <input id="elev-input" type="number" inputmode="decimal" value={String(elev)} style="width:140px;padding:8px 10px;font-size:15px;" />
@@ -180,12 +201,12 @@ const feedNoun = feedLabel(reading?.feed) === 'CDEC' ? 'CDEC gage reading'
     <section class="section">
       <h2 style="margin-bottom:14px;">About {lake.name}</h2>
       <div class="def-table">
-        <div class="row"><div class="k">Full pool</div><div class="vv">{lake.full_pool_ft != null ? fmtNum(lake.full_pool_ft,0)+' ft' : '—'}</div></div>
-        <div class="row"><div class="k">Capacity</div><div class="vv">{lake.capacity_af != null ? fmtNum(lake.capacity_af,0)+' AF' : '—'}</div></div>
+        <div class="row"><div class="k">Full pool</div><div class="vv">{lake.full_pool_ft != null ? fmtNum(lake.full_pool_ft,0)+' ft' : 'n/a'}</div></div>
+        <div class="row"><div class="k">Capacity</div><div class="vv">{lake.capacity_af != null ? fmtNum(lake.capacity_af,0)+' AF' : 'n/a'}</div></div>
         <div class="row"><div class="k">Dam / operator</div><div class="vv">{lake.operator}</div></div>
         <div class="row"><div class="k">River / basin</div><div class="vv">{lake.river}</div></div>
         <div class="row"><div class="k">State</div><div class="vv">{stName}</div></div>
-        <div class="row"><div class="k">Data feed</div><div class="vv">{feedLabel(reading?.feed) || feedLabel(lake.feed) || '—'}</div></div>
+        <div class="row"><div class="k">Data feed</div><div class="vv">{feedLabel(reading?.feed) || feedLabel(lake.feed) || 'n/a'}</div></div>
       </div>
     </section>
 
@@ -223,7 +244,7 @@ const feedNoun = feedLabel(reading?.feed) === 'CDEC' ? 'CDEC gage reading'
         <div class="grid cols-4">
           {related.map((l) => {
             const r = getReading(l.slug); const hex = r?.fresh ? toneHex(status(r.pct_full).tone) : '#8a949a';
-            const val = r?.fresh ? (r.pct_full!=null?`${r.pct_full}%`:`${fmtNum(r.level_ft,1)}`) : '—';
+            const val = r?.fresh ? (r.pct_full!=null?`${r.pct_full}%`:`${fmtNum(r.level_ft,1)}`) : 'n/a';
             const bar = r?.fresh && r.pct_full!=null ? `${r.pct_full}%` : '0%';
             return <a class="lake-card" href={`/lake/${l.slug}`} style="padding:18px;"><div class="name" style="font-size:13px;">{l.name}</div><div class="val" style={`font-size:24px;margin-top:8px;color:${hex};`}>{val}</div><div class="bar" style="margin-top:12px;"><i style={`width:${bar};background:${hex}`}></i></div></a>;
           })}

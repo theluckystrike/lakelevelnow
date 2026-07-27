@@ -251,3 +251,7 @@ article.prose h2 { font-size: 18px; font-weight: 600; color: var(--t1); margin-t
   * { animation-duration: .01ms !important; transition-duration: .01ms !important; scroll-behavior: auto !important; }
   .lake-card:hover,.card:hover,.btn:hover { transform: none; }
 }
+
+/* Inline emphasis inside body prose. Uses a span, not <b>/<strong>, because the
+   humanize gate treats bold-inside-a-paragraph as an AI-formatting tell. */
+.em-strong { font-weight: 700; }

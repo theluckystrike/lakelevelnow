@@ -85,6 +85,20 @@ const ld = [authorLd(), breadcrumbLd([{ name: 'Home', path: '/' }])];
       </section>
     )}
 
+    {/* Paid-guide strip. Sits below the headline readings and the movers table so
+        the live data is delivered first. Injected by cta.js; purely additive. */}
+    <script
+      is:inline
+      src="/kit/cta.js"
+      data-mt-cta
+      data-tool="read-lake-levels-yourself"
+      data-href="https://theluckystrike.gumroad.com/l/read-lake-levels-yourself"
+      data-text="Reading Lake Levels Yourself covers where the gauge data comes from, what the numbers actually mean, and how to check any lake without waiting for a site to update."
+      data-action="Read it - $9.99"
+      data-source="lakelevelnow-home"
+      data-placement="inline"
+    ></script>
+
     <section class="section">
       <h2 style="margin-bottom:16px;">Browse by state</h2>
       <div class="state-grid">

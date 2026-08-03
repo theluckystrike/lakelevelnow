@@ -255,3 +255,16 @@ article.prose h2 { font-size: 18px; font-weight: 600; color: var(--t1); margin-t
 /* Inline emphasis inside body prose. Uses a span, not <b>/<strong>, because the
    humanize gate treats bold-inside-a-paragraph as an AI-formatting tell. */
 .em-strong { font-weight: 700; }
+
+/* cta.js promo strip. The script ships a neutral grey default; retint it to the
+   site's warm-paper palette. `body` prefixed so it outranks the injected rule. */
+body .mt-cta {
+  --c-bg: var(--card);
+  --c-fg: var(--t1);
+  --c-mut: var(--t2);
+  --c-line: var(--border);
+  --c-acc: var(--teal);
+  border-radius: var(--r);
+  font-family: var(--sans);
+}
+body .mt-cta-a:hover { color: #fff; text-decoration: none; }

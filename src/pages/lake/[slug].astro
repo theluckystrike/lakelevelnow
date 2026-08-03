@@ -233,6 +233,22 @@ const feedNoun = feedLabel(reading?.feed) === 'CDEC' ? 'CDEC gage reading'
       </p>
     </section>
 
+    {/* Paid-guide strip. Deliberately sits below the gauge, the stat grid and the
+        provenance note, so the reading a visitor came for is delivered before
+        anything is offered. Purely additive: it is injected by cta.js and its
+        absence changes nothing above it. */}
+    <script
+      is:inline
+      src="/kit/cta.js"
+      data-mt-cta
+      data-tool="is-the-boat-ramp-usable"
+      data-href="https://theluckystrike.gumroad.com/l/is-the-boat-ramp-usable"
+      data-text="Lake level alone does not tell you whether the ramp is usable. This guide covers gauge readings, ramp elevations, and how much margin to leave."
+      data-action="Read it - $9.99"
+      data-source="lakelevelnow-lake"
+      data-placement="inline"
+    ></script>
+
     <section class="section">
       <h2 style="margin-bottom:4px;">Questions about {lake.name}</h2>
       {faqs.map((f) => <div class="faq-item"><div class="q">{f.q}</div><div class="a">{f.a}</div></div>)}

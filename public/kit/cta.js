@@ -1,0 +1,155 @@
+/*
+ * kit/cta.js - one-line promo strip for the paid guides.
+ *
+ * Self-hosted copy of microtools/kit/cta.js. Kept here rather than loaded from a
+ * third-party origin so the site's CSP can stay at script-src 'self'.
+ *
+ * Dropped into a shared template so a single edit reaches every page it renders on:
+ *
+ *   <script src="/kit/cta.js"
+ *           data-mt-cta
+ *           data-tool="is-the-boat-ramp-usable"
+ *           data-href="https://theluckystrike.gumroad.com/l/is-the-boat-ramp-usable"
+ *           data-text="Lake level alone does not tell you whether the ramp is usable."
+ *           data-action="Read it - $9.99"
+ *           data-source="lakelevelnow-lake"
+ *           data-placement="inline"></script>
+ *
+ * Behaviour that matters:
+ *   - Hides itself if the visitor already owns a licence for the named tool. Nobody should
+ *     be sold something they have already bought.
+ *   - Hides itself on the page it points at, to avoid a CTA linking to the current page.
+ *   - Dismissible, and the dismissal sticks for 30 days.
+ *   - Appends a source parameter so referrals are attributable in analytics without cookies.
+ *   - Opens in a new tab, so a reader who follows it still has the lake page they came for.
+ *
+ * placement: "inline"  - inserts where the script tag sits
+ *            "footer"  - appends to <body>, sits in normal document flow at the end
+ *            "sticky"  - fixed strip pinned to the bottom of the viewport
+ *
+ * DIVERGENCE FROM THE KIT: the upstream copy rebuilt the href as
+ * `u.pathname + u.search + u.hash`, which silently drops the origin. That is
+ * fine for the kit's same-site links but it turns an off-site target such as a
+ * Gumroad product URL into a root-relative path that 404s on this domain. The
+ * href and target-page checks below are origin-aware for that reason.
+ */
+(function () {
+  'use strict';
+
+  var self = document.currentScript;
+  if (!self || !self.hasAttribute('data-mt-cta')) return;
+
+  var cfg = {
+    tool: self.getAttribute('data-tool') || '',
+    href: self.getAttribute('data-href') || '',
+    text: self.getAttribute('data-text') || '',
+    action: self.getAttribute('data-action') || 'Take a look',
+    placement: self.getAttribute('data-placement') || 'inline',
+    source: self.getAttribute('data-source') || 'sitecta'
+  };
+  if (!cfg.href || !cfg.text) return;
+
+  var DISMISS_KEY = 'mt_cta_x_' + (cfg.tool || cfg.href);
+  var DISMISS_DAYS = 30;
+
+  function dismissed() {
+    try {
+      var v = localStorage.getItem(DISMISS_KEY);
+      if (!v) return false;
+      if (Date.now() - Number(v) > DISMISS_DAYS * 864e5) {
+        localStorage.removeItem(DISMISS_KEY);
+        return false;
+      }
+      return true;
+    } catch (e) { return false; }
+  }
+
+  /* Do not advertise a page the visitor is already on. An off-site target can
+     never be the current page, so it short-circuits to false. */
+  function onTargetPage() {
+    try {
+      var target = new URL(cfg.href, location.href);
+      if (target.origin !== location.origin) return false;
+      return target.pathname.replace(/\/+$/, '') === location.pathname.replace(/\/+$/, '');
+    } catch (e) { return false; }
+  }
+
+  function styles() {
+    if (document.getElementById('mt-cta-style')) return;
+    var s = document.createElement('style');
+    s.id = 'mt-cta-style';
+    s.textContent = [
+      '.mt-cta{--c-bg:#f4f6f8;--c-fg:#14161a;--c-mut:#5c636e;--c-line:#e0e4e9;--c-acc:#1c6ef2;',
+      'font:inherit;background:var(--c-bg);color:var(--c-fg);border:1px solid var(--c-line);',
+      'border-radius:10px;padding:.85rem 1rem;margin:1.75rem 0;display:flex;gap:.9rem;',
+      'align-items:center;flex-wrap:wrap;line-height:1.5}',
+      '.mt-cta-t{flex:1 1 16rem;min-width:0;font-size:.9375rem}',
+      '.mt-cta-a{font-weight:600;color:var(--c-acc);text-decoration:none;white-space:nowrap;',
+      'border:1px solid var(--c-acc);border-radius:7px;padding:.42rem .85rem;font-size:.875rem}',
+      '.mt-cta-a:hover{background:var(--c-acc);color:#fff}',
+      '.mt-cta-a:focus-visible{outline:2px solid var(--c-acc);outline-offset:2px}',
+      '.mt-cta-x{background:none;border:0;color:var(--c-mut);font:inherit;font-size:1.05rem;',
+      'line-height:1;cursor:pointer;padding:.3rem .35rem;border-radius:5px}',
+      '.mt-cta-x:hover{color:var(--c-fg)}',
+      '.mt-cta-sticky{position:fixed;left:1rem;right:1rem;bottom:1rem;margin:0;z-index:9999;',
+      'box-shadow:0 6px 24px rgba(0,0,0,.16)}',
+      '@media(max-width:480px){.mt-cta{padding:.75rem .85rem}.mt-cta-t{font-size:.875rem}}'
+    ].join('');
+    document.head.appendChild(s);
+  }
+
+  function render() {
+    styles();
+    var box = document.createElement('aside');
+    box.className = 'mt-cta' + (cfg.placement === 'sticky' ? ' mt-cta-sticky' : '');
+    box.setAttribute('aria-label', 'Related paid guide');
+
+    var t = document.createElement('span');
+    t.className = 'mt-cta-t';
+    t.textContent = cfg.text;
+
+    var a = document.createElement('a');
+    a.className = 'mt-cta-a';
+    /* This CTA is embedded in other people's reading. Opening in a new tab means a
+       visitor who follows it has not lost the page they came for. */
+    a.target = '_blank';
+    a.rel = 'noopener noreferrer';
+    a.textContent = cfg.action;
+    try {
+      var u = new URL(cfg.href, location.href);
+      u.searchParams.set('src', cfg.source);
+      /* Off-site targets keep their origin; same-site links stay root-relative. */
+      a.href = (u.origin === location.origin) ? (u.pathname + u.search + u.hash) : u.href;
+    } catch (e) { a.href = cfg.href; }
+
+    var x = document.createElement('button');
+    x.className = 'mt-cta-x';
+    x.type = 'button';
+    x.setAttribute('aria-label', 'Dismiss');
+    x.textContent = '×';
+    x.addEventListener('click', function () {
+      try { localStorage.setItem(DISMISS_KEY, String(Date.now())); } catch (e) { /* ignore */ }
+      box.remove();
+    });
+
+    box.appendChild(t);
+    box.appendChild(a);
+    box.appendChild(x);
+
+    if (cfg.placement === 'inline' && self.parentNode) self.parentNode.insertBefore(box, self);
+    else document.body.appendChild(box);
+  }
+
+  function maybeRender() {
+    if (dismissed() || onTargetPage()) return;
+    /* If the licence kit is present and the visitor already owns this guide, stay silent. */
+    if (cfg.tool && window.MTLicense && typeof window.MTLicense.check === 'function') {
+      window.MTLicense.check(cfg.tool).then(function (r) { if (!r.unlocked) render(); });
+      return;
+    }
+    render();
+  }
+
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', maybeRender);
+  else maybeRender();
+})();

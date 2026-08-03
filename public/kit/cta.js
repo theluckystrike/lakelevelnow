@@ -45,7 +45,9 @@
     text: self.getAttribute('data-text') || '',
     action: self.getAttribute('data-action') || 'Take a look',
     placement: self.getAttribute('data-placement') || 'inline',
-    source: self.getAttribute('data-source') || 'sitecta'
+    source: self.getAttribute('data-source') || 'sitecta',
+    medium: self.getAttribute('data-medium') || 'cta',
+    campaign: self.getAttribute('data-campaign') || 'microtools'
   };
   if (!cfg.href || !cfg.text) return;
 
@@ -117,6 +119,11 @@
     a.textContent = cfg.action;
     try {
       var u = new URL(cfg.href, location.href);
+      /* Gumroad only records attribution when all three of utm_source, utm_medium and
+         utm_campaign are present on the landing. Any one missing and it stores nothing. */
+      u.searchParams.set('utm_source', cfg.source);
+      u.searchParams.set('utm_medium', cfg.medium);
+      u.searchParams.set('utm_campaign', cfg.campaign);
       u.searchParams.set('src', cfg.source);
       /* Off-site targets keep their origin; same-site links stay root-relative. */
       a.href = (u.origin === location.origin) ? (u.pathname + u.search + u.hash) : u.href;

@@ -268,3 +268,26 @@ body .mt-cta {
   font-family: var(--sans);
 }
 body .mt-cta-a:hover { color: #fff; text-decoration: none; }
+
+/* Readable body prose. The depth page measured 1,172 words in main against the
+   home page's 538, with 7 paragraphs over 55 words, and every paragraph carried
+   its own inline font-size and max-width. That is what made it read as a wall.
+   One class now owns the measure and the rhythm so pages cannot drift apart. */
+.readable { max-width: 64ch; font-size: 16px; line-height: 1.72; color: var(--t2); }
+.readable + .readable { margin-top: 1.15em; }
+.readable strong, .readable b { color: var(--t1); font-weight: 600; }
+
+/* Section rhythm. 48px between sections is fine on a short page and cramped on a
+   long one, so long-form pages opt into more air without touching the grid pages. */
+.section.airy { padding-top: 64px; }
+.section.airy > h2 { margin-bottom: 14px; }
+
+/* FAQ needed real separation. 20px of padding on a 15px line made six questions
+   read as one block of grey. */
+.faq-item { padding: 24px 0; }
+.faq-item .a { font-size: 16px; line-height: 1.7; max-width: 64ch; }
+
+@media (max-width: 640px) {
+  .readable { font-size: 15.5px; line-height: 1.68; }
+  .section.airy { padding-top: 48px; }
+}

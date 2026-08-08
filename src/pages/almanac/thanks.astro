@@ -1,0 +1,144 @@
+---
+// /almanac/thanks/ — where Stripe sends a buyer after payment.
+//
+// This page holds no secret and makes no claim of its own. It reads ?session_id= out of
+// the URL and asks the fulfilment Worker whether that session was actually paid. The
+// Worker is the only party that talks to Stripe, and it refuses any session whose
+// payment_link is not one of ours — which is what keeps the six other businesses on the
+// shared Stripe account from being able to unlock this product, and vice versa.
+//
+// Everything below the fold renders with JavaScript off, so a buyer whose script blocker
+// eats the fetch still sees their receipt reference and a way to reach a human.
+import BaseLayout from '../../layouts/BaseLayout.astro';
+
+const WORKER = 'https://lake-level-almanac.lipmichal.workers.dev';
+const title = 'Your Lake Level Almanac download';
+const description = 'Download the almanac you just bought. The link is verified against your Stripe receipt and can be re-opened from this page at any time.';
+---
+
+<BaseLayout title={title} description={description} path="/almanac/thanks/" noindex={true}>
+  <div class="container">
+    <div style="padding:36px 0 12px;">
+      <h1 id="hd">Checking your purchase&hellip;</h1>
+      <p id="sub" class="readable" style="margin-top:10px;">
+        One moment. We are confirming the payment with Stripe before handing over the file.
+      </p>
+    </div>
+
+    <div id="panel" class="alm-panel" hidden>
+      <div id="ok" hidden>
+        <p class="alm-lake" id="lakeName"></p>
+        <p class="readable">Your almanac is ready. It is a ZIP holding an offline HTML almanac,
+        the full daily record as CSV, the day-of-year normals, the monthly climatology and a
+        README that names the gage, the datum and every row that was discarded during cleaning.</p>
+        <p><a id="dl" class="alm-btn" href="#" download>Download the ZIP</a></p>
+        <p class="alm-note" id="meta"></p>
+      </div>
+
+      <div id="pending" hidden>
+        <p class="readable"><strong>Stripe has not settled this payment yet.</strong> Card payments
+        are usually instant, but a bank transfer can take a few days. Nothing has gone wrong.
+        Reload this page once your bank shows the payment as complete, or forward your Stripe
+        receipt to the address below and the file will be sent by hand.</p>
+      </div>
+
+      <div id="prob" hidden>
+        <p class="readable" id="probMsg"></p>
+      </div>
+    </div>
+
+    <div class="alm-panel" style="margin-top:18px;">
+      <h2 style="font-size:18px;margin:0 0 8px;">Keep this page</h2>
+      <p class="readable">Bookmark this URL. It regenerates a fresh download link every time you
+      open it, so you do not need to keep the file safe. You can come back for it on a new
+      phone or laptop. Each individual link expires after thirty minutes, which is why it is the
+      page and not the link that is worth saving.</p>
+      <p class="readable">Your Stripe receipt arrives by email with the same reference. If anything
+      here does not work, reply to that receipt or use <a href="/about/">the contact page</a> and
+      include the reference below. That is enough to find your order.</p>
+      <p class="alm-note">Reference: <code id="ref">not set</code></p>
+    </div>
+  </div>
+</BaseLayout>
+
+<style>
+  .alm-panel { background: var(--card); border: 1px solid var(--border);
+    border-radius: 10px; padding: 22px 24px; margin-top: 8px; }
+  .alm-lake { font-weight: 700; font-size: 20px; margin: 0 0 10px; }
+  .alm-btn { display: inline-block; background: var(--teal); color: #fff;
+    font-weight: 600; padding: 13px 22px; border-radius: 8px; text-decoration: none; }
+  .alm-btn:hover { filter: brightness(1.08); }
+  .alm-note { font-size: 13.5px; color: var(--t2); margin: 14px 0 0; }
+</style>
+
+<script define:vars={{ WORKER }}>
+  (function () {
+    var q = new URLSearchParams(location.search);
+    var sid = q.get('session_id') || '';
+    var hd = document.getElementById('hd');
+    var sub = document.getElementById('sub');
+    var panel = document.getElementById('panel');
+    var refEl = document.getElementById('ref');
+    if (sid) refEl.textContent = sid.slice(0, 24) + '…';
+
+    function show(id, msg) {
+      panel.hidden = false;
+      document.getElementById(id).hidden = false;
+      if (msg) document.getElementById('probMsg').innerHTML = msg;
+    }
+    function problem(msg) { hd.textContent = 'We could not confirm that purchase';
+      sub.textContent = ''; show('prob', msg); }
+
+    if (!/^cs_(test|live)_[A-Za-z0-9]+$/.test(sid)) {
+      problem('This page needs the reference Stripe adds to the address when a payment ' +
+        'completes, and it is not there. If you have your receipt email, open the link in it ' +
+        'again. If you reached this page by hand, there is nothing to download yet. The ' +
+        '<a href="/almanac/">almanac page</a> is where a purchase starts.');
+      return;
+    }
+
+    fetch(WORKER + '/verify?session_id=' + encodeURIComponent(sid))
+      .then(function (r) { return r.json().then(function (j) { return { s: r.status, j: j }; }); })
+      .then(function (res) {
+        var j = res.j;
+        if (j && j.ok) {
+          hd.textContent = 'Thank you, here it is';
+          sub.textContent = 'Payment confirmed with Stripe.';
+          document.getElementById('lakeName').textContent =
+            (j.name || 'Lake Level Almanac') + (j.sku === 'bundle' ? '' : ': Lake Level Almanac');
+          var a = document.getElementById('dl');
+          a.href = j.url;
+          a.setAttribute('download', j.filename || 'lake-level-almanac.zip');
+          var kb = j.bytes ? (j.bytes / 1048576).toFixed(1) + ' MB' : '';
+          document.getElementById('meta').textContent =
+            (kb ? kb + ' · ' : '') + 'this link expires in 30 minutes · reopen this page for a new one'
+            + (j.downloadsAllowed ? ' · ' + j.downloadsUsed + ' of ' + j.downloadsAllowed + ' used' : '');
+          show('ok');
+          return;
+        }
+        var e = (j && j.error) || 'unknown';
+        if (e === 'not_paid') { hd.textContent = 'Payment not settled yet'; sub.textContent = '';
+          panel.hidden = false; document.getElementById('pending').hidden = false; return; }
+        if (e === 'unknown_lake') {
+          problem('The payment went through, but the lake did not travel with it, so we cannot ' +
+            'tell which almanac to send. Nothing is lost. Forward your Stripe receipt using ' +
+            '<a href="/about/">the contact page</a> and name your lake, and it will be sent by hand ' +
+            'the same day.'); return; }
+        if (e === 'not_our_product') {
+          problem('That receipt is for a different product on the same payment account, so this ' +
+            'page cannot unlock it. Check the link in your receipt email.'); return; }
+        if (e === 'download_limit_reached') {
+          problem('This receipt has generated its full allowance of download links. If you still ' +
+            'need the file, get in touch through <a href="/about/">the contact page</a> with the ' +
+            'reference below.'); return; }
+        problem('Something went wrong on our side, not yours, and the payment is safe. Get in touch ' +
+          'through <a href="/about/">the contact page</a> with the reference below and the file will ' +
+          'be sent by hand.');
+      })
+      .catch(function () {
+        problem('We could not reach the download service. Your payment is unaffected. Reload this ' +
+          'page in a minute, or get in touch through <a href="/about/">the contact page</a> with the ' +
+          'reference below.');
+      });
+  })();
+</script>

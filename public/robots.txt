@@ -1,5 +1,5 @@
-# lakelevelnow.com — all pages public and indexable.
-# GEO: AI crawlers explicitly ALLOWED. When competitors block GPTBot/PerplexityBot,
+# lakelevelnow.com, all pages public and indexable.
+# AI crawlers are explicitly allowed here. When competitors block GPTBot/PerplexityBot,
 # our content stays in the retrieval/citation pool and theirs doesn't.
 User-agent: *
 Allow: /

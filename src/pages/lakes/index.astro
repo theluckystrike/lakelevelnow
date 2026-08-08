@@ -31,7 +31,7 @@ const toneHex = (t: string) => t === 'red' ? '#bb5a37' : t === 'amber' ? '#b07d1
                     <td><a href={`/lake/${l.slug}`}><b>{l.name}</b></a></td>
                     <td class="mut">{l.river}</td>
                     <td class="mut">{l.operator}</td>
-                    <td class="num">{live ? (r!.pct_full != null ? `${r!.pct_full}%` : `${fmtNum(r!.level_ft,1)} ft`) : '—'}</td>
+                    <td class="num">{live ? (r!.pct_full != null ? `${r!.pct_full}%` : `${fmtNum(r!.level_ft,1)} ft`) : 'n/a'}</td>
                     <td>{live ? <span class={`pill ${st.tone==='red'?'red':st.tone==='amber'?'amber':'green'}`}>{st.label}</span> : <span class="mut" style="font-size:12px;">feed pending</span>}</td>
                   </tr>
                 );

@@ -12,7 +12,7 @@
   "don-pedro-lake":     { "feed": "cdec", "site": "DNP" },
   "san-luis-reservoir": { "feed": "cdec", "site": "SNL" },
   "lake-cachuma":       { "feed": "cdec", "site": "CCH" },
-  "lake-casitas":       { "feed": "cdec", "site": "CAS" },
+  "lake-casitas":       { "feed": "cdec", "site": "CSI" },
 
   "lake-mead":          { "feed": "usbr", "site": "Lake Mead" },
   "lake-mohave":        { "feed": "usbr", "site": "Lake Mohave" },

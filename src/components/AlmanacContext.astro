@@ -1,0 +1,104 @@
+---
+// The free half of the almanac, rendered directly on a lake page.
+//
+// This block does three jobs at once and is the reason the paid product is worth building
+// at all:
+//
+//  1. It answers the question the page currently leaves open. A visitor who searched
+//     "canyon lake water level" gets the elevation at the top and leaves, because the
+//     number alone settles nothing. "Higher than 91% of Augusts in 31 years" settles it.
+//  2. It is a fact no competitor publishes, so it can go in the title and meta description
+//     where it can win a click that a bare elevation cannot. 123 page-one queries on this
+//     site returned zero clicks in 46 days; a differentiated snippet is the only lever
+//     against that which does not require ranking better.
+//  3. It is the honest lead-in to the paid almanac. The visitor has already had one useful
+//     thing for free before being asked for anything.
+//
+// FRESHNESS. The percentile is computed HERE, at build time, from whatever the live gage
+// says today — not read out of a frozen snapshot. The site rebuilds daily and the gauge
+// above this block moves with it; a hard-coded percentile would drift away from it and
+// eventually contradict it outright. `almanac-doy.json` carries a ladder of quantiles for
+// every calendar date, so today's reading can be placed on it with no network call. That
+// file is ~830 KB and is read in frontmatter only; not one byte of it reaches the browser.
+//
+// If the live reading is missing or stale, the block falls back to the snapshot figure and
+// says which date it belongs to, rather than implying the stale number is today's.
+import data from '../data/almanac.json';
+import { almanacContext, leadSentence } from '../lib/almanac';
+
+interface Props {
+  slug: string;
+  /** The page's live reading, so this block and the gauge above can never disagree. */
+  level?: number | null;
+  asOf?: string | null;
+  /** Set false on pages that already sell something, so a visitor never sees two asks. */
+  showCta?: boolean;
+}
+const { slug, level = null, asOf = null, showCta = true } = Astro.props;
+
+const ctx = almanacContext(slug, level, asOf);
+const lake = ctx?.lake ?? null;
+const LINK = import.meta.env.PUBLIC_ALMANAC_LINK_SINGLE || '';
+const buy = LINK ? `${LINK}?client_reference_id=${slug}` : '/almanac';
+const lead = ctx ? leadSentence(ctx) : '';
+const fmt = (n: number, d = 2) =>
+  n.toLocaleString('en-US', { minimumFractionDigits: d, maximumFractionDigits: d });
+---
+
+{lake && ctx && (
+  <section class="alm-ctx" aria-labelledby={`alm-h-${slug}`}>
+    <h2 id={`alm-h-${slug}`} class="alm-ctx-h">Is that normal for the date?</h2>
+    <p class="alm-ctx-lead">{lead}</p>
+
+    {/* Ask before evidence, not after. Measured on a 390px phone, moving the button above
+        the provenance paragraph lifts it roughly 200px, and the reader who is already
+        convinced by the lead sentence should not have to scroll past a citation to act.
+        The provenance still sits directly beneath, for the reader who wants it. */}
+    {showCta && (
+      <div class="alm-ctx-cta">
+        <a class="alm-ctx-btn" href={buy} rel="nofollow"
+           data-alm-cta="lake" data-lake={slug}>
+          The full {lake.name} almanac, ${data.priceSingleUsd}
+        </a>
+        <span class="alm-ctx-micro">
+          {lake.years} years of daily record, the normal band for all 366 days, and a tool that
+          tells you how often the lake has been below <em>your</em> ramp or dock elevation.
+          Instant download.
+        </span>
+      </div>
+    )}
+
+    <p class="alm-ctx-sub">
+      {ctx.asOfLabel && <>Reading of {ctx.asOfLabel}. </>}
+      The median for this date across {lake.years} years is {fmt(ctx.median)} ft, so this is
+      {' '}{ctx.vsMedian >= 0 ? '+' : ''}{fmt(ctx.vsMedian)} ft against the lake&rsquo;s own
+      history. Placed on a quantile ladder built from {lake.obs.toLocaleString('en-US')} daily
+      readings published by {lake.feed} for site {lake.site}, {lake.recordStart} to {lake.recordEnd}.
+      {lake.peakMonth && lake.troughMonth && (
+        <> This reservoir typically peaks in {lake.peakMonth} and bottoms out in {lake.troughMonth}.</>
+      )}
+    </p>
+  </section>
+)}
+
+<style>
+  .alm-ctx { border: 1px solid var(--border); border-left: 4px solid var(--teal);
+    border-radius: 0 10px 10px 0; padding: 20px 22px; margin: 22px 0; background: var(--card); }
+  .alm-ctx-h { font-size: 15px; margin: 0 0 10px; color: var(--t2);
+    font-weight: 600; letter-spacing: .01em; }
+  .alm-ctx-lead { font-size: clamp(17px, 2.2vw, 20px); font-weight: 650; line-height: 1.42;
+    margin: 0 0 10px; max-width: 44ch; }
+  .alm-ctx-sub { font-size: 13.5px; line-height: 1.58; color: var(--t2);
+    margin: 16px 0 0; padding-top: 14px; max-width: 64ch;
+    border-top: 1px solid var(--border); }
+  .alm-ctx-cta { display: flex; flex-wrap: wrap; align-items: center; gap: 14px;
+    margin-top: 16px; }
+  .alm-ctx-btn { display: inline-block; background: var(--teal); color: #fff;
+    font-weight: 600; font-size: 15px; padding: 12px 20px; border-radius: 8px;
+    text-decoration: none; white-space: nowrap; }
+  .alm-ctx-btn:hover { filter: brightness(1.08); }
+  .alm-ctx-micro { font-size: 13px; line-height: 1.55; color: var(--t2);
+    flex: 1 1 260px; min-width: 0; }
+  @media (max-width: 560px) { .alm-ctx { padding: 17px 18px; } .alm-ctx-btn { width: 100%;
+    text-align: center; white-space: normal; } }
+</style>

@@ -36,6 +36,14 @@ jobs:
         run: npm run fetch
       - name: Build
         run: npm run build
+        env:
+          # Stripe payment links for Lake Level Almanac. These are public URLs, not
+          # secrets — anyone who visits /almanac/ sees them — so they live here rather
+          # than in repository secrets, where a missing value would be invisible.
+          # If either is empty the buy controls render visibly disabled instead of
+          # linking nowhere, so a bad deploy looks broken rather than swallowing clicks.
+          PUBLIC_ALMANAC_LINK_SINGLE: https://buy.stripe.com/00w3cw2oafoc7VXgjj43S0q
+          PUBLIC_ALMANAC_LINK_BUNDLE: https://buy.stripe.com/bJe5kE4wia3S3FHebb43S0r
       - uses: actions/configure-pages@v5
       - uses: actions/upload-pages-artifact@v3
         with:

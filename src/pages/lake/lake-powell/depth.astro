@@ -7,6 +7,7 @@
 // validated reading + published constants; nothing is typed by hand.
 import BaseLayout from '../../../layouts/BaseLayout.astro';
 import DepthGauge from '../../../components/DepthGauge.astro';
+import AlmanacContext from '../../../components/AlmanacContext.astro';
 import { LAKES, getReading, fmtNum, POWELL_BAND, changeOverSeries, feedLabel } from '../../../lib/lakes';
 import { authorLd, breadcrumbLd, speakableLd, absUrl } from '../../../lib/seo';
 
@@ -135,6 +136,11 @@ const faqs = [
         <p>Live feed reconnecting. The depth recomputes from the <a href={GAGE}>USGS gage</a> on every build; the published reference figures below don't change with the level.</p>
       </div>
     )}
+
+    {/* This page had no call to action at all, and it has the site's best click-through
+        rate (1.28% against a 0.74% site average). The depth reading it leads with raises
+        exactly the question the almanac answers. */}
+    <AlmanacContext slug="lake-powell" level={live && reading ? reading.level_ft : null} asOf={live && reading ? reading.as_of : null} />
 
     <section class="section airy">
       {live && depth != null && (

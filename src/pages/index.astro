@@ -3,6 +3,7 @@ import BaseLayout from '../layouts/BaseLayout.astro';
 import { SITE } from '../consts';
 import { LAKES, freshLakes, byState, getReading, status, fmtNum, stateName } from '../lib/lakes';
 import { authorLd, breadcrumbLd } from '../lib/seo';
+import almanacData from '../data/almanac.json';
 
 const title = 'Live US lake & reservoir water levels';
 const description = SITE.description;
@@ -23,6 +24,17 @@ const faqs = [
   { q: 'Is the level shown in real time?', a: 'Almost. It is the most recent reading from the source, usually minutes to hours old. Always confirm conditions with the lake operator before heading out.' },
 ];
 const ld = [authorLd(), breadcrumbLd([{ name: 'Home', path: '/' }])];
+// The homepage carries 22.9% of all site impressions (4,220 in the 46 days to 2026-08-05)
+// at an average position of 30.25, and it sold nothing, because it asked for nothing.
+// Rather than a generic promo, it leads with whichever covered lake is furthest from its
+// own normal today. That is a real headline, it changes on its own, and it is the single
+// claim on this domain that no competitor can reproduce.
+const almLakes = almanacData.lakes;
+const almFeature = [...almLakes].sort(
+  (a, b) => Math.abs(b.percentile - 50) - Math.abs(a.percentile - 50)
+)[0];
+const ALMANAC_SINGLE = import.meta.env.PUBLIC_ALMANAC_LINK_SINGLE || '';
+
 ---
 <BaseLayout title={title} description={description} path="/" jsonLd={ld}>
   <div class="container">
@@ -32,6 +44,25 @@ const ld = [authorLd(), breadcrumbLd([{ name: 'Home', path: '/' }])];
       <h1>Live US lake &amp; reservoir water levels</h1>
       <p class="lead">Percent full and 30-day trend from USGS and CDEC gages, with a plain-English read on whether you can launch a boat.</p>
     </section>
+
+    {almFeature && (
+      <section class="alm-home">
+        <p class="alm-home-k">Is that level normal?</p>
+        <p class="alm-home-lead">{almFeature.sentence}</p>
+        <p class="alm-home-sub">
+          Every tracker shows today&rsquo;s elevation. The Lake Level Almanac shows whether it is
+          normal, from {almanacData.deepestRecordYears} years of daily federal record across
+          {' '}{almanacData.lakeCount} reservoirs: day-of-year normals, month-by-month
+          climatology, and how often your own ramp or dock elevation has been above water.
+        </p>
+        <p class="alm-home-cta">
+          <a class="alm-home-btn" href={ALMANAC_SINGLE ? `${ALMANAC_SINGLE}?client_reference_id=${almFeature.slug}` : '/almanac'} rel="nofollow">
+            {almFeature.name} almanac, ${almanacData.priceSingleUsd}
+          </a>
+          <a class="alm-home-alt" href="/almanac">See all {almanacData.lakeCount} lakes</a>
+        </p>
+      </section>
+    )}
 
     <section class="section">
       <div class="head-row">
@@ -118,3 +149,27 @@ const ld = [authorLd(), breadcrumbLd([{ name: 'Home', path: '/' }])];
 
   </div>
 </BaseLayout>
+
+<style>
+  .alm-home { border: 1px solid var(--border); border-left: 4px solid var(--teal);
+    border-radius: 0 12px 12px 0; padding: 22px 24px; margin: 4px 0 8px;
+    background: var(--card); }
+  .alm-home-k { font-size: 13px; font-weight: 600; color: var(--t2); margin: 0 0 10px;
+    letter-spacing: .01em; }
+  .alm-home-lead { font-size: clamp(18px, 2.6vw, 23px); font-weight: 650; line-height: 1.38;
+    margin: 0 0 12px; max-width: 40ch; }
+  .alm-home-sub { font-size: 14.5px; line-height: 1.6; color: var(--t1); margin: 0;
+    max-width: 66ch; }
+  .alm-home-cta { display: flex; flex-wrap: wrap; align-items: center; gap: 16px;
+    margin: 18px 0 0; }
+  .alm-home-btn { display: inline-block; background: var(--teal); color: #fff;
+    font-weight: 600; font-size: 15px; padding: 12px 20px; border-radius: 8px;
+    text-decoration: none; }
+  .alm-home-btn:hover { filter: brightness(1.08); }
+  .alm-home-alt { font-size: 14px; font-weight: 500; }
+  @media (max-width: 560px) {
+    .alm-home { padding: 18px 18px; }
+    .alm-home-btn { width: 100%; text-align: center; }
+    .alm-home-cta { gap: 12px; }
+  }
+</style>

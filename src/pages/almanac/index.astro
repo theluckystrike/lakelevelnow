@@ -1,0 +1,301 @@
+---
+// /almanac/ — the sales page for Lake Level Almanac.
+//
+// Structure follows what the measurement says, not what a template says:
+//
+//  * The buy control is in the first screenful. NN/g puts 74% of viewing time in the first
+//    two screenfuls; the CTA currently on the lake pages sits at screenful four and has
+//    sold nothing in 46 days.
+//  * It opens with a number, not a promise. The visitor arrived from a query Google
+//    already answered, so the only reason to keep reading is a fact Google did not have.
+//  * There is no social proof, because there are no customers yet, and a "0 sold" counter
+//    is worse than silence. Provenance does the same job honestly: named gage, named
+//    datum, published discard counts.
+//  * Every claim below is generated from data/almanac.json at build time. Nothing is typed
+//    by hand, so nothing can go stale or be wrong in a way the data is not.
+import BaseLayout from '../../layouts/BaseLayout.astro';
+import data from '../../data/almanac.json';
+
+const SINGLE_LINK = import.meta.env.PUBLIC_ALMANAC_LINK_SINGLE || '';
+const BUNDLE_LINK = import.meta.env.PUBLIC_ALMANAC_LINK_BUNDLE || '';
+
+const lakes = data.lakes;
+const featured = lakes.find((l) => l.slug === 'lake-powell') || lakes[0];
+const totalReadings = data.totalReadings.toLocaleString('en-US');
+const deepest = data.deepestRecordYears;
+
+// The two most striking lakes right now, chosen by distance from their own median rather
+// than by traffic, so the page leads with whatever is actually unusual today.
+const striking = [...lakes]
+  .sort((a, b) => Math.abs(b.percentile - 50) - Math.abs(a.percentile - 50))
+  .slice(0, 3);
+
+const title = `Lake Level Almanac: is your lake normal for the date? | ${data.lakeCount} US reservoirs`;
+const description = `Every tracker shows today's elevation. This shows whether it is normal. ${deepest} years of daily record for ${data.lakeCount} reservoirs, turned into day-of-year normals, monthly climatology, and how often the lake has been below your own ramp or dock elevation. $${data.priceSingleUsd} one time.`;
+
+const ld = [{
+  '@context': 'https://schema.org',
+  '@type': 'Product',
+  name: 'Lake Level Almanac',
+  description,
+  brand: { '@type': 'Brand', name: 'LakeLevelNow' },
+  offers: {
+    '@type': 'AggregateOffer',
+    lowPrice: data.priceSingleUsd, highPrice: data.priceBundleUsd,
+    priceCurrency: 'USD', offerCount: 2, availability: 'https://schema.org/InStock',
+  },
+  isBasedOn: [
+    { '@type': 'Dataset', name: 'USGS Water Services daily values', url: 'https://waterservices.usgs.gov/' },
+    { '@type': 'Dataset', name: 'California Data Exchange Center', url: 'https://cdec.water.ca.gov/' },
+    { '@type': 'Dataset', name: 'Reclamation hydrodata', url: 'https://www.usbr.gov/uc/water/hydrodata/' },
+  ],
+}];
+---
+
+<BaseLayout title={title} description={description} path="/almanac/" jsonLd={ld}>
+  <div class="container">
+
+    <section class="alm-hero">
+      <p class="alm-eyebrow">Lake Level Almanac</p>
+      <h1>Every tracker tells you the level.<br>None of them tells you if it is normal.</h1>
+
+      <p class="alm-lede">{featured.sentence}</p>
+      <p class="readable">That sentence took {featured.years} years of daily readings to write, and
+      you will not find it on any other site. Not on the agency page the number comes from, not on
+      a tracker, not in the search result you arrived from. The elevation is free everywhere. The
+      context is nowhere.</p>
+
+      <div class="alm-buy">
+        <div class="alm-buy-main">
+          <div class="alm-price">${data.priceSingleUsd}<span>one time, one lake</span></div>
+          <a class="alm-btn" href={SINGLE_LINK} data-alm-buy="single" rel="nofollow">
+            Get your lake&rsquo;s almanac
+          </a>
+          <p class="alm-micro">Instant download &middot; no account, no password &middot;
+          60-day refund, no questions</p>
+        </div>
+        <div class="alm-buy-alt">
+          <div class="alm-price small">${data.priceBundleUsd}<span>all {data.lakeCount} lakes</span></div>
+          <a class="alm-btn ghost" href={BUNDLE_LINK} data-alm-buy="bundle" rel="nofollow">
+            Get every lake
+          </a>
+          <p class="alm-micro">{totalReadings} daily readings in one ZIP</p>
+        </div>
+      </div>
+    </section>
+
+    <section class="section">
+      <h2>What you get</h2>
+      <p class="readable">One ZIP per lake. Open the HTML file in any browser. It works offline, on
+      a phone, and it never calls out to anything. The CSVs beside it are the receipts.</p>
+
+      <div class="alm-grid">
+        <div class="alm-card">
+          <h3>Where today sits</h3>
+          <p>Today&rsquo;s reading ranked against every reading within a week of the same calendar
+          date, across the whole record. The answer is a percentile and a plain sentence, not a
+          chart you have to interpret.</p>
+        </div>
+        <div class="alm-card">
+          <h3>The normal band</h3>
+          <p>All 366 days of the year, showing the 10th to 90th percentile the lake usually
+          occupies, with this year drawn over the top. You can see a drought arriving months
+          before a headline does.</p>
+        </div>
+        <div class="alm-card">
+          <h3>Your elevation</h3>
+          <p>Type in your ramp, your dock, your boat lift, or the shallow spot you would rather
+          not find. You get the number of days in the record the lake sat below it, the share of
+          each month it did, the last date it happened, and the longest unbroken run.</p>
+        </div>
+        <div class="alm-card">
+          <h3>The annual cycle</h3>
+          <p>Which month this lake typically peaks, which month it bottoms out, the median swing
+          between the two, and the worst swing on record. This is the number that decides when to
+          book a trip.</p>
+        </div>
+        <div class="alm-card">
+          <h3>Year by year</h3>
+          <p>The high and the low of every calendar year with the exact dates. The whole drought
+          history of the lake on one page.</p>
+        </div>
+        <div class="alm-card">
+          <h3>The record itself</h3>
+          <p>Every daily reading as CSV, with the datum, the parameter code, the statistic and the
+          agency qualifier on every row. Yours to do anything with.</p>
+        </div>
+      </div>
+    </section>
+
+    <section class="section">
+      <h2>Unusual right now</h2>
+      <p class="readable">Recomputed on every build. These are the three lakes furthest from their
+      own normal for today&rsquo;s date.</p>
+      <div class="tw">
+        <table>
+          <thead><tr><th>Lake</th><th>Today</th><th>Median for the date</th>
+            <th>Percentile</th><th>Record</th></tr></thead>
+          <tbody>
+            {striking.map((l) => (
+              <tr>
+                <td><strong>{l.name}</strong>{l.state ? `, ${l.state}` : ''}</td>
+                <td>{l.todayFt.toLocaleString('en-US', { minimumFractionDigits: 2 })} ft</td>
+                <td>{l.medianForDate.toLocaleString('en-US', { minimumFractionDigits: 2 })} ft</td>
+                <td>{l.percentileOrdinal}</td>
+                <td>{l.years} yr</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <section class="section">
+      <h2>Pick your lake</h2>
+      <p class="readable">Choose one and the checkout knows which almanac to send. Deeper records
+      make better normals, so the years column is worth a look before you buy.</p>
+      <div class="tw">
+        <table>
+          <thead><tr><th>Lake</th><th>Record</th><th>Daily readings</th><th>Today</th>
+            <th>Normal for the date</th><th></th></tr></thead>
+          <tbody>
+            {lakes.map((l) => (
+              <tr>
+                <td><strong>{l.name}</strong>{l.state ? `, ${l.state}` : ''}</td>
+                <td>{l.years} yr <span class="mut">from {l.recordStart.slice(0, 4)}</span></td>
+                <td>{l.obs.toLocaleString('en-US')}</td>
+                <td>{l.todayFt.toLocaleString('en-US', { minimumFractionDigits: 2 })} ft</td>
+                <td>{l.read.replace(' for this date', '')}</td>
+                <td><a class="alm-mini" data-alm-buy="single" data-lake={l.slug}
+                       href={SINGLE_LINK ? `${SINGLE_LINK}?client_reference_id=${l.slug}` : ''}
+                       rel="nofollow">${data.priceSingleUsd}</a></td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <section class="section">
+      <h2>Why you should believe the numbers</h2>
+      <p class="readable">Nobody has bought this yet, so there are no reviews to show you and it
+      would be worth nothing if there were. Here is what can be checked instead.</p>
+      <ul class="readable">
+        <li><strong>Every reading is federal or state public-domain data</strong>, named to the
+        gage. USGS Water Services, California&rsquo;s Data Exchange Center, and Reclamation&rsquo;s
+        hydrodata for Lake Powell, whose record runs back to December 1963 while its USGS gage only
+        starts in 2019.</li>
+        <li><strong>The README in every download says what was thrown away.</strong> Raw feeds carry
+        sentinel values and bad rows. The count discarded, the reason, and the rule are printed for
+        each lake. A product that hides its cleaning is asking you to trust an invisible step.</li>
+        <li><strong>Lakes that could not be done honestly are missing.</strong> Lake Mead, Lake
+        Havasu and Lake Mohave are not here, because Reclamation&rsquo;s public feed for them carries
+        only a rolling few days and no long daily record could be assembled without guessing. Lake
+        Buchanan is missing because its USGS gage publishes no daily-values series at all.</li>
+        <li><strong>The method is not invented here.</strong> Day-of-year percentiles are how the
+        USGS itself reports streamflow on its national WaterWatch map. That map excludes stage-only
+        gages, which is exactly what a reservoir-elevation gage is. The technique is standard; the
+        application to reservoir levels is what nobody had done.</li>
+      </ul>
+    </section>
+
+    <section class="section">
+      <h2>What this will not do</h2>
+      <p class="readable">It reports what the water has done. It does not tell you whether a boat
+      ramp is open, whether a dock will float, or whether it is safe to launch. Closures follow
+      elevation, but they also follow staffing, silt, maintenance, and through 2025 and 2026 in
+      California, invasive-mussel inspections that closed ramps at lakes which were not low.</p>
+      <p class="readable">That is why the elevation tool takes a threshold from you rather than
+      asserting one. You bring the number you have verified; the almanac tells you what the water
+      did against it. Always confirm current conditions with the operating agency before you tow
+      anything.</p>
+    </section>
+
+    <section class="section">
+      <h2>Questions</h2>
+      <div class="faq-item"><div class="q">Is this a subscription?</div>
+        <div class="a">No. One payment, one download, yours to keep. There is nothing to cancel.</div></div>
+      <div class="faq-item"><div class="q">Does the data update?</div>
+        <div class="a">The file you download is a snapshot with the record complete to the day you
+        bought it. A decade of daily readings does not change; only the last few rows do. The free
+        current reading on this site stays live, and the almanac is rebuilt regularly if you want a
+        fresh one later.</div></div>
+      <div class="faq-item"><div class="q">Do I need an account?</div>
+        <div class="a">No account and no password. Stripe collects an email because Stripe always
+        does, and sends you a receipt. That receipt is also your permanent download link. Nothing
+        else is asked for and there is no mailing list attached to it.</div></div>
+      <div class="faq-item"><div class="q">Can I use this in a client report?</div>
+        <div class="a">Yes. Personal and internal business use is fine, including a report you hand
+        a client. Reselling the almanac itself is not. The underlying government measurements are
+        public domain and yours regardless.</div></div>
+      <div class="faq-item"><div class="q">What if it is not useful?</div>
+        <div class="a">Reply to the Stripe receipt within 60 days and the payment is refunded, no
+        questions. Keep the file: asking for it back would cost more than the refund.</div></div>
+      <div class="faq-item"><div class="q">My lake is not listed.</div>
+        <div class="a">Then no long daily record could be assembled for it from a public feed, or
+        the one that exists failed an integrity check. Ask through <a href="/about/">the contact
+        page</a> and it will be looked at; several of the lakes here were added that way.</div></div>
+    </section>
+
+    <section class="section alm-close">
+      <h2>{featured.sentence}</h2>
+      <p class="readable">You can go and check that against the gage yourself. Working out what it
+      means took {featured.obs.toLocaleString('en-US')} readings and a lot of arithmetic. That is
+      what the ${data.priceSingleUsd} buys.</p>
+      <p><a class="alm-btn" href={SINGLE_LINK} data-alm-buy="single" rel="nofollow">
+        Get your lake&rsquo;s almanac for ${data.priceSingleUsd}</a></p>
+    </section>
+
+  </div>
+</BaseLayout>
+
+<style>
+  .alm-hero { padding: 30px 0 8px; }
+  .alm-eyebrow { font: 600 11px/1 var(--mono); letter-spacing: .16em;
+    text-transform: uppercase; color: var(--teal); margin: 0 0 14px; }
+  .alm-hero h1 { font-size: clamp(28px, 5vw, 42px); line-height: 1.1; margin: 0 0 18px; }
+  .alm-lede { font-size: clamp(18px, 2.4vw, 22px); font-weight: 600; line-height: 1.45;
+    max-width: 34ch; margin: 0 0 14px; }
+  .alm-buy { display: flex; flex-wrap: wrap; gap: 14px; margin: 26px 0 8px; }
+  .alm-buy-main, .alm-buy-alt { border: 1px solid var(--border); border-radius: 12px;
+    padding: 20px 22px; background: var(--card); flex: 1 1 260px; min-width: 0; }
+  .alm-buy-main { border-color: var(--teal); border-width: 2px; }
+  .alm-price { font: 700 40px/1 var(--sans); letter-spacing: -.03em; margin-bottom: 14px; }
+  .alm-price.small { font-size: 30px; }
+  .alm-price span { display: block; font: 500 13.5px/1.4 var(--sans);
+    color: var(--t2); letter-spacing: 0; margin-top: 6px; }
+  .alm-btn { display: inline-block; background: var(--teal); color: #fff;
+    font-weight: 600; padding: 13px 22px; border-radius: 8px; text-decoration: none;
+    border: 1px solid var(--teal); }
+  .alm-btn:hover { filter: brightness(1.08); }
+  .alm-btn.ghost { background: transparent; color: var(--teal); }
+  .alm-btn[href=""] { pointer-events: none; opacity: .45; }
+  .alm-micro { font-size: 12.5px; color: var(--t2); margin: 12px 0 0; }
+  .alm-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+    gap: 14px; margin-top: 18px; }
+  .alm-card { border: 1px solid var(--border); border-radius: 10px; padding: 18px 20px;
+    background: var(--card); }
+  .alm-card h3 { margin: 0 0 8px; font-size: 16px; }
+  .alm-card p { margin: 0; font-size: 14.5px; }
+  .alm-mini { display: inline-block; background: var(--teal); color: #fff;
+    font: 600 13px/1 var(--sans); padding: 8px 12px; border-radius: 6px;
+    text-decoration: none; white-space: nowrap; }
+  .alm-mini[href=""] { pointer-events: none; opacity: .4; }
+  .mut { color: var(--t2); font-size: 12.5px; }
+  /* The site's global.css has no table-scroller class, so this page brings its own.
+     Without it the pick-your-lake table (571px on a 390px phone) pushes the whole
+     document sideways instead of scrolling inside its own box. */
+  .tw { overflow-x: auto; -webkit-overflow-scrolling: touch; overscroll-behavior-x: contain;
+    max-width: 100%; min-width: 0; border: 1px solid var(--border);
+    border-radius: 10px; background: var(--card); margin: 16px 0; }
+  .tw table { border-collapse: collapse; width: 100%; min-width: 520px; font-size: 14px; }
+  .tw th { text-align: right; font-size: 10.5px; letter-spacing: .07em; text-transform: uppercase;
+    color: var(--t2); padding: 11px 13px; white-space: nowrap;
+    border-bottom: 1px solid var(--border); }
+  .tw th:first-child, .tw td:first-child { text-align: left; }
+  .tw td { padding: 10px 13px; text-align: right; border-top: 1px solid var(--border);
+    font-variant-numeric: tabular-nums; }
+  .alm-close { border-top: 2px solid var(--ink); }
+  .alm-close h2 { max-width: 24ch; }
+  @media (max-width: 640px) { .alm-buy { flex-direction: column; } }
+</style>

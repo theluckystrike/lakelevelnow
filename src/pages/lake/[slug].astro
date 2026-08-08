@@ -1,6 +1,8 @@
 ---
 import BaseLayout from '../../layouts/BaseLayout.astro';
 import LakeGauge from '../../components/LakeGauge.astro';
+import AlmanacContext from '../../components/AlmanacContext.astro';
+import { almanacContext, titleClause, descriptionClause } from '../../lib/almanac';
 import { SITE, AFFILIATES } from '../../consts';
 import { LAKES, getReading, launchRead, status, fmtNum, stateName, POWELL_BAND, changeOverSeries, liveBandBelowFullPct, feedLabel } from '../../lib/lakes';
 import { lakeLd, authorLd, breadcrumbLd, speakableLd } from '../../lib/seo';
@@ -28,8 +30,20 @@ const liveFigure = live
       ? `${reading!.pct_full}% full`
       : (reading!.level_ft != null ? `${fmtNum(reading!.level_ft, 1)} ft` : null))
   : null;
+// Day-of-year context, where a long enough record exists. Computed from the SAME live
+// reading the gauge shows, against a published quantile ladder, so the snippet, the block
+// further down and the number at the top of the page cannot drift apart on a site that
+// rebuilds every day. See src/lib/almanac.ts.
+//
+// A title clause is spent, not free: Google truncates, and "62nd percentile" is not worth
+// the characters. So the title gets a clause only at the tails, where the statement reads
+// as a headline; the description gets one always, replacing boilerplate that said nothing.
+const alm = almanacContext(slug, live ? reading!.level_ft : null, live ? reading!.as_of : null);
+const titleCtx = alm ? titleClause(alm) : '';
+const descCtx = alm ? descriptionClause(alm) : '';
+
 const title = liveFigure
-  ? `${lake.name} water level today: ${liveFigure}`
+  ? `${lake.name} water level today: ${liveFigure}${titleCtx}`
   : `${lake.name} water level`;
 // feet_from_full comes straight off the validated reading; the fuller feetBelowFull
 // fallback is computed further down and is not needed (or available) this early.
@@ -38,7 +52,9 @@ const belowFullPhrase = metaFeetFromFull != null
   ? `, ${fmtNum(Math.abs(metaFeetFromFull), 1)} ft ${metaFeetFromFull > 0 ? 'below' : 'above'} full pool`
   : '';
 const description = liveFigure
-  ? `${lake.name} is ${liveFigure}${belowFullPhrase} as of ${asOfFmt}. Live ${feedLabel(reading!.feed) || 'USGS'} gage reading, 30-day trend, and a plain-English boat-launch read.`
+  ? (descCtx
+      ? `${lake.name} is ${liveFigure}${belowFullPhrase} as of ${asOfFmt}.${descCtx} Live ${feedLabel(reading!.feed) || 'USGS'} gage and 30-day trend.`
+      : `${lake.name} is ${liveFigure}${belowFullPhrase} as of ${asOfFmt}. Live ${feedLabel(reading!.feed) || 'USGS'} gage reading, 30-day trend, and a plain-English boat-launch read.`)
   : `${lake.name} water level and percent full: live USGS/CDEC gauge, 30-day trend, and a plain-English boat-launch read.`;
 
 // Quotable Authority Sentence (GEO): declarative, specific, sourced, <25 words.
@@ -130,6 +146,12 @@ const feedNoun = feedLabel(reading?.feed) === 'CDEC' ? 'CDEC gage reading'
         <a href={feedLabel(reading?.feed) === 'CDEC' && lake.cdec_id ? `https://cdec.water.ca.gov/dynamicapp/staMeta?station_id=${lake.cdec_id}` : feedLabel(reading?.feed) === 'USBR' ? 'https://www.usbr.gov/lc/region/g4000/riverops/webreports/hourlyweb.json' : (lake.usgs_site ? `https://waterdata.usgs.gov/monitoring-location/${lake.usgs_site}/` : '#')}>operator's page</a>.</p>
       </div>
     )}
+
+    {/* Directly under the gauge, on purpose. The visitor came for one number and it is
+        immediately above this; the one question the number leaves open is whether it is
+        normal, and this answers it before asking for anything. Renders nothing for a lake
+        with no long record, so all 44 pages are safe to wrap. */}
+    <AlmanacContext slug={slug} level={live ? reading!.level_ft : null} asOf={live ? reading!.as_of : null} />
 
     {isPowell && band && elev != null && (
       <section class="section">

@@ -14,7 +14,7 @@
 // Every displayed number is a deterministic transform of the validated reading plus the
 // published constants in lib/lakes.ts; nothing is typed by hand in the markup.
 import BaseLayout from '../../../layouts/BaseLayout.astro';
-import { LAKES, getReading, fmtNum, feedLabel, POWELL_BAND, POWELL_RAMPS, POWELL_APRIL_2023, changeOverSeries } from '../../../lib/lakes';
+import { LAKES, getReading, fmtNum, feedLabel, POWELL_BAND, powellRamps, powellRampsAsOf, POWELL_RAMPS_SOURCE, POWELL_RAMP_PAGES, POWELL_APRIL_2023, changeOverSeries } from '../../../lib/lakes';
 import { authorLd, breadcrumbLd, speakableLd, absUrl } from '../../../lib/seo';
 
 const lake = LAKES.find((l) => l.slug === 'lake-powell')!;
@@ -23,7 +23,16 @@ const live = !!(reading && reading.fresh);
 const elev = live ? reading!.level_ft : null;
 
 const band = POWELL_BAND;
-const ramps = [...POWELL_RAMPS].sort((a, b) => a.minFt - b.minFt);
+const ramps = [...powellRamps()].sort((a, b) => a.minFt - b.minFt);
+const rampsAsOf = powellRampsAsOf();
+const rampsAsOfFmt = rampsAsOf ? new Date(rampsAsOf).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : '';
+// Ramps NPS lists as usable in some form right now, which is a different question from
+// whether the water is deep enough. Both are shown because they disagree.
+const openNow = ramps.filter((r) => [r.houseboats, r.smallMotorized, r.nonMotorized].some((v) => v === 'available'));
+// Where the ramp's own NPS page states a different minimum than the NPS summary table.
+const conflicts = POWELL_RAMP_PAGES
+  .map((p) => ({ ...p, row: ramps.find((r) => r.name === p.table) }))
+  .filter((p) => p.row && p.row.minFt !== p.pageMinFt);
 const openCount = elev != null ? ramps.filter((r) => elev >= r.minFt).length : null;
 const lowestRamp = ramps[0];
 const gapToLowest = elev != null ? Math.round((elev - lowestRamp.minFt) * 10) / 10 : null;
@@ -161,25 +170,44 @@ const faqs = [
 
     <section class="section airy">
       <h2>Every published ramp minimum, against today's level</h2>
-      <p class="readable">The National Park Service publishes a minimum lake elevation for each launch ramp at Glen Canyon. Those thresholds are fixed numbers, so the only thing that changes is where the lake sits against them. The wording is quoted from each ramp's own page because the Park Service phrases them differently, and two of them apply only to a vessel size class.</p>
+      <p class="readable">The National Park Service publishes a minimum lake elevation for every launch ramp at Glen Canyon, alongside what it will let each vessel class do there today. Both are reproduced below, refreshed from the Park Service table on every build. The elevation is the physics. The status is the Park Service decision, and the two do not always agree, because a ramp can sit above its own threshold and still be closed for dredging, debris or access.</p>
 
-      <div class="def-table" style="max-width:660px;margin-top:16px;">
+      <div class="def-table" style="max-width:760px;margin-top:16px;">
         {ramps.map((r) => (
           <div class="row">
-            <div class="k"><a href={r.url}>{r.name}</a> · {fmtNum(r.minFt, 0)} ft</div>
+            <div class="k">{r.name} · {fmtNum(r.minFt, 0)} ft</div>
             <div class="vv">
-              {elev != null
-                ? (elev >= r.minFt
-                  ? <span class="em-strong">{fmtNum(Math.round((elev - r.minFt) * 10) / 10, 1)} ft above its published minimum</span>
-                  : <span>{fmtNum(Math.round((r.minFt - elev) * 10) / 10, 1)} ft short of its published minimum</span>)
-                : <span>Published minimum {fmtNum(r.minFt, 0)} ft</span>}
-              {' '}{r.note}
+              {elev != null && (elev >= r.minFt
+                ? <span class="em-strong">{fmtNum(Math.round((elev - r.minFt) * 10) / 10, 1)} ft above its published elevation.</span>
+                : <span>{fmtNum(Math.round((r.minFt - elev) * 10) / 10, 1)} ft short of its published elevation.</span>)}
+              {' '}Park Service status, houseboats {r.houseboats || 'not stated'}, small motorized {r.smallMotorized || 'not stated'}, non motorized {r.nonMotorized || 'not stated'}.
+              {r.note && <span> {r.note}</span>}
             </div>
           </div>
         ))}
       </div>
 
-      <p class="readable" style="margin-top:16px;">Clearing the published elevation is a necessary condition and not a sufficient one. Ramps also close for dredging, debris, damage and staffing, and the Park Service updates each page on its own schedule. Confirm with Glen Canyon National Recreation Area before you tow a boat.</p>
+      <p class="readable" style="margin-top:16px;">Clearing the published elevation is a necessary condition and not a sufficient one, which the status column makes obvious. Confirm with Glen Canyon National Recreation Area before you tow a boat. Park Service status read {rampsAsOfFmt} from <a href={POWELL_RAMPS_SOURCE}>the Glen Canyon lake level effects table</a>.</p>
+    </section>
+
+    <section class="section airy">
+      <h2>Where the Park Service contradicts itself</h2>
+      <p class="readable">Glen Canyon publishes ramp elevations in two places, a summary table and a page per ramp, and for some ramps the two do not match. That is not a rounding difference. It decides whether you drive to the water.</p>
+      {conflicts.length > 0 ? (
+        <div class="def-table" style="max-width:760px;margin-top:16px;">
+          {conflicts.map((c) => (
+            <div class="row">
+              <div class="k">{c.table}</div>
+              <div class="vv">
+                The <a href={POWELL_RAMPS_SOURCE}>summary table</a> says {fmtNum(c.row!.minFt, 0)} ft. The <a href={c.url}>ramp's own page</a> says {fmtNum(c.pageMinFt, 0)} ft, wording it "{c.quote.replace(/\.$/, '')}". The gap is {fmtNum(Math.abs(c.row!.minFt - c.pageMinFt), 0)} ft.
+              </div>
+            </div>
+          ))}
+        </div>
+      ) : (
+        <p class="readable">Both Park Service sources currently agree on every ramp checked here. This section reappears when they diverge.</p>
+      )}
+      <p class="readable" style="margin-top:16px;">This page reports the summary table figure in the roster above, because that is the source the Park Service updates alongside the status column. Where the ramp page disagrees, both numbers are shown rather than one being quietly chosen. Treat the higher of the two as the safe planning figure.</p>
     </section>
 
     <section class="section airy">

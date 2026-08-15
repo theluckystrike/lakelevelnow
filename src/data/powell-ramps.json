@@ -1,0 +1,119 @@
+{
+  "source": "https://www.nps.gov/glca/learn/changing-lake-levels.htm",
+  "as_of": "2026-08-15T03:10:58.338Z",
+  "table_changed_at": "2026-08-15T03:10:58.338Z",
+  "ramps": [
+    {
+      "name": "Wahweap Main Launch Ramp",
+      "minFt": 3545,
+      "houseboats": "closed",
+      "smallMotorized": "closed",
+      "nonMotorized": "at your own risk",
+      "note": "Ramp closed to launch/retrieval of motorized vessels. Open to paddlecraft only."
+    },
+    {
+      "name": "Wahweap Stateline Launch Ramp",
+      "minFt": 3567,
+      "houseboats": "closed",
+      "smallMotorized": "closed",
+      "nonMotorized": "at your own risk",
+      "note": "Ramp closed to launch/retrieval of motorized vessels. Drive halfway down the ramp to access the Stateline Auxiliary Ramp. Open to paddlecraft only."
+    },
+    {
+      "name": "Wahweap Stateline Auxiliary Launch Ramp",
+      "minFt": 3515,
+      "houseboats": "available",
+      "smallMotorized": "available",
+      "nonMotorized": "closed",
+      "note": "Open to motorized vessels. Plate mats needed at 3524 ft to launch. Prepare all boats in the Stateline Main Ramp parking lot before accessing the auxiliary ramp."
+    },
+    {
+      "name": "Castle Rock Cut",
+      "minFt": 3583,
+      "houseboats": "closed",
+      "smallMotorized": "closed",
+      "nonMotorized": "closed",
+      "note": "Navigation buoys are placed at 3590 ft."
+    },
+    {
+      "name": "Antelope Point Public Launch Ramp",
+      "minFt": 3588,
+      "houseboats": "closed",
+      "smallMotorized": "closed",
+      "nonMotorized": "at your own risk",
+      "note": "Public Ramp closed to motorized vessels. Available for paddlecraft launching only."
+    },
+    {
+      "name": "Antelope Point Business Ramp",
+      "minFt": 3535,
+      "houseboats": "closed",
+      "smallMotorized": "closed",
+      "nonMotorized": "closed",
+      "note": "This ramp is not directly managed by Glen Canyon National Recreation Area. Limited launch available. Customers should contact Antelope Point Valet Services to inquire about their specific vessel(s), 928 645-5900 ext. 5032."
+    },
+    {
+      "name": "Halls Crossing Launch Ramp",
+      "minFt": 3557,
+      "houseboats": "closed",
+      "smallMotorized": "closed",
+      "nonMotorized": "closed",
+      "note": "Closed to all vessels."
+    },
+    {
+      "name": "UDOT Ferry",
+      "minFt": 3575,
+      "houseboats": "closed",
+      "smallMotorized": "closed",
+      "nonMotorized": "closed",
+      "note": "The ferry is not anticipated to operate until further notice. The ferry does not operate if lake levels drop below 3575 ft. More information regarding the Lake Powell Ferry provided by UDOT."
+    },
+    {
+      "name": "UDOT Launch Ramps",
+      "minFt": 3575,
+      "houseboats": "closed",
+      "smallMotorized": "closed",
+      "nonMotorized": "closed",
+      "note": "Ramps closed to private launching."
+    },
+    {
+      "name": "Bullfrog North Launch Ramp",
+      "minFt": 3525,
+      "houseboats": "at your own risk",
+      "smallMotorized": "at your own risk",
+      "nonMotorized": "at your own risk",
+      "note": "Due to the drop off at the end of the ramp traffic can access the west lane only. There is a steel plate at the bottom. Best suited to launch vessels less than 25 ft."
+    },
+    {
+      "name": "Bullfrog Main Launch Ramp",
+      "minFt": 3578,
+      "houseboats": "closed",
+      "smallMotorized": "closed",
+      "nonMotorized": "at your own risk",
+      "note": "Open to all vessels when lake level is over 3578 ft. Prepare your boats at the Bullfrog Visitor Center parking lot and the Old Marina Store asphalt parking lot."
+    },
+    {
+      "name": "Bullfrog Main Launch Ramp Spur",
+      "minFt": 3549,
+      "houseboats": "closed",
+      "smallMotorized": "closed",
+      "nonMotorized": "at your own risk",
+      "note": "Ramp closed to launch/retrieval of motorized vessels. Open to paddlecraft only."
+    },
+    {
+      "name": "Hite Launch Ramp",
+      "minFt": 3650,
+      "houseboats": "closed",
+      "smallMotorized": "closed",
+      "nonMotorized": "closed",
+      "note": "Hite Launch Ramp out of water. Lake Powell does not reach Hite at this time. The road to Hite from Hwy 95 is closed."
+    },
+    {
+      "name": "Rainbow Bridge National Monument",
+      "minFt": 3548,
+      "houseboats": "at your own risk",
+      "smallMotorized": "at your own risk",
+      "nonMotorized": "at your own risk",
+      "note": "At 3548 ft docks are disconnected from land and relocated to deeper water. Bathrooms remain open to boaters. Small boats can beach to access trail. Caution is advised to avoid quicksand and unstable soils."
+    }
+  ]
+}

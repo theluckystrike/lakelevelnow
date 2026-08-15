@@ -171,48 +171,67 @@ export const POWELL_APRIL_2023 = {
   erosUrl: 'https://eros.usgs.gov/earthshots/water-levels',
 };
 
-// Lake Powell launch ramps, each with the minimum lake elevation the National Park
-// Service publishes for it and the NPS page that publishes it. Sourced and verified
-// through the portfolio-seo-pipeline run 2026-08-14: every entry below was re-fetched
-// and its `quote` matched verbatim against the live NPS page at L7 citation integrity.
-// The wording differs per ramp because NPS words each page differently, so the quote is
-// carried rather than paraphrased, and `minFt` is the number that quote states.
-// Exposed here so the ramp page never types a reference elevation by hand.
-export const POWELL_RAMPS = [
+// Lake Powell launch ramps. The roster, the minimum elevations and the per vessel class
+// availability all come from the NPS "Lake Level Effects to Launch Ramps and Services"
+// table, refetched on every build by scripts/fetch-powell-ramps.mjs. Availability is
+// operational and changes as the lake drops, so it is never carried as a constant here.
+import rampData from '../data/powell-ramps.json';
+
+export type PowellRamp = {
+  name: string;
+  minFt: number;
+  houseboats: string | null;
+  smallMotorized: string | null;
+  nonMotorized: string | null;
+  note: string;
+};
+
+export function powellRamps(): PowellRamp[] {
+  const rows = (rampData as any)?.ramps;
+  return Array.isArray(rows) ? (rows as PowellRamp[]) : [];
+}
+export function powellRampsAsOf(): string | null {
+  return (rampData as any)?.as_of ?? null;
+}
+export const POWELL_RAMPS_SOURCE: string = (rampData as any)?.source ?? 'https://www.nps.gov/glca/learn/changing-lake-levels.htm';
+
+// The Park Service also publishes a page per ramp, and for two ramps that page states a
+// DIFFERENT minimum elevation than the summary table above. Both figures are quoted
+// verbatim from the live NPS pages, re-fetched and citation-verified through the
+// portfolio-seo-pipeline run 2026-08-14. This disagreement is the reason the page shows
+// the ramp page figure beside the table figure instead of silently picking one.
+export const POWELL_RAMP_PAGES = [
   {
-    name: 'Stateline Auxiliary',
-    minFt: 3515,
-    url: 'https://www.nps.gov/places/stateline-auxiliary-launch-ramp.htm',
-    quote: 'This launch ramp is operable for vessel launch and retrieve at lake elevation 3515 ft or above.',
-    note: 'The lowest published threshold on the lake.',
-  },
-  {
-    name: 'Bullfrog Main spur',
-    minFt: 3540,
-    url: 'https://www.nps.gov/places/bullfrog-main-launch-ramp.htm',
-    quote: "available for vessels less than 25' long until the lake is below 3540'",
-    note: 'Vessels under 25 feet only.',
-  },
-  {
-    name: 'Wahweap Main',
-    minFt: 3548,
+    // Table says 3545 ft, the ramp's own page says above 3548 ft.
+    table: 'Wahweap Main Launch Ramp',
+    pageMinFt: 3548,
     url: 'https://www.nps.gov/places/wahweap-main-launch-ramp.htm',
     quote: 'This launch ramp is available to motorized vessels when the lake level elevation is above 3548 ft.',
-    note: 'Motorized vessels.',
   },
   {
-    name: 'Halls Crossing',
-    minFt: 3557,
+    // Table says 3549 ft, the ramp's own page says below 3540 ft for vessels under 25 ft.
+    table: 'Bullfrog Main Launch Ramp Spur',
+    pageMinFt: 3540,
+    url: 'https://www.nps.gov/places/bullfrog-main-launch-ramp.htm',
+    quote: "available for vessels less than 25' long until the lake is below 3540'",
+  },
+  {
+    table: 'Wahweap Stateline Auxiliary Launch Ramp',
+    pageMinFt: 3515,
+    url: 'https://www.nps.gov/places/stateline-auxiliary-launch-ramp.htm',
+    quote: 'This launch ramp is operable for vessel launch and retrieve at lake elevation 3515 ft or above.',
+  },
+  {
+    table: 'Halls Crossing Launch Ramp',
+    pageMinFt: 3557,
     url: 'https://www.nps.gov/places/halls-crossing-launch-ramp.htm',
     quote: 'This ramp is available for all vessel launching until the lake level elevation 3557 ft or above.',
-    note: 'All vessel launching.',
   },
   {
-    name: 'Bullfrog Main',
-    minFt: 3578,
+    table: 'Bullfrog Main Launch Ramp',
+    pageMinFt: 3578,
     url: 'https://www.nps.gov/places/bullfrog-main-launch-ramp.htm',
     quote: "The ramp is operable for launching motorized vessels until the lake level is below 3578'.",
-    note: 'Motorized vessels.',
   },
 ];
 

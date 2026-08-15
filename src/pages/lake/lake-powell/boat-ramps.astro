@@ -28,7 +28,21 @@ const rampsAsOf = powellRampsAsOf();
 const rampsAsOfFmt = rampsAsOf ? new Date(rampsAsOf).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : '';
 // Ramps NPS lists as usable in some form right now, which is a different question from
 // whether the water is deep enough. Both are shown because they disagree.
-const openNow = ramps.filter((r) => [r.houseboats, r.smallMotorized, r.nonMotorized].some((v) => v === 'available'));
+// The headline number must be what a boater acts on, which is the Park Service status,
+// not the elevation arithmetic. Those two disagree for every ramp here: NPS keeps ramps
+// usable for paddlecraft or at your own risk far below their published minimum, because
+// that minimum describes MOTORIZED launching. Leading with "N of 14 above minimum" made
+// the least reliable number on the page the one a reader carried away.
+const isMotorOpen = (r: { houseboats: string | null; smallMotorized: string | null }) =>
+  [r.houseboats, r.smallMotorized].some((v) => v === 'available');
+const isAnyUsable = (r: { houseboats: string | null; smallMotorized: string | null; nonMotorized: string | null }) =>
+  [r.houseboats, r.smallMotorized, r.nonMotorized].some((v) => !!v && v !== 'closed');
+const motorOpen = ramps.filter(isMotorOpen);
+const limitedOpen = ramps.filter((r) => !isMotorOpen(r) && isAnyUsable(r));
+const closedAll = ramps.filter((r) => !isAnyUsable(r));
+// Ramps the Park Service still lists as usable while the water sits under their own
+// published elevation. This is the finding, not a footnote.
+const usableBelowThreshold = elev != null ? ramps.filter((r) => isAnyUsable(r) && elev < r.minFt) : [];
 // Where the ramp's own NPS page states a different minimum than the NPS summary table.
 const conflicts = POWELL_RAMP_PAGES
   .map((p) => ({ ...p, row: ramps.find((r) => r.name === p.table) }))
@@ -43,8 +57,9 @@ const change30d = changeOverSeries(reading?.series);
 // Plural agreement. With five ramps and a lake near the lowest threshold, the count is
 // routinely 1, and "1 of the 5 ramps sit" is the kind of sentence that reads as generated.
 const rampNoun = (n: number) => (n === 1 ? 'ramp' : 'ramps');
-const WORDS = ['none', 'one', 'two', 'three', 'four', 'five'];
+const WORDS = ['none', 'one', 'two', 'three', 'four', 'five', 'six', 'seven', 'eight', 'nine', 'ten', 'eleven', 'twelve', 'thirteen', 'fourteen'];
 const spell = (n: number | null) => (n != null && n >= 0 && n < WORDS.length ? WORDS[n] : String(n));
+const cap = (t: string) => (t ? t.charAt(0).toUpperCase() + t.slice(1) : t);
 const openCountLabel = spell(openCount);
 const rampTotalLabel = spell(ramps.length);
 // "moved -3.80 ft" reads as a machine wrote it. Say which way it went.
@@ -74,16 +89,16 @@ const PATH = '/lake/lake-powell/boat-ramps/';
 const GAGE = 'https://waterdata.usgs.gov/monitoring-location/09379900/';
 const NPS = 'https://www.nps.gov/glca/faqs.htm';
 
-const title = live && openCount != null
-  ? `Lake Powell boat ramps, ${openCount} of ${ramps.length} above minimum elevation today`
-  : 'Lake Powell boat ramp minimum elevations';
-const description = live && elev != null && openCount != null
-  ? `Lake Powell is at ${fmtNum(elev, 1)} ft, so ${openCount} of ${ramps.length} launch ramps with a published National Park Service minimum elevation clear it. Every threshold is quoted from the NPS page that publishes it.`
-  : 'The minimum lake elevation the National Park Service publishes for each Lake Powell launch ramp, quoted from the NPS page that publishes it, compared against the live USGS gage reading.';
+const title = live
+  ? `Lake Powell boat ramps, ${spell(motorOpen.length)} open to motorized boats today`
+  : 'Lake Powell boat ramp status and minimum elevations';
+const description = live && elev != null
+  ? `Lake Powell is at ${fmtNum(elev, 1)} ft. The Park Service lists ${spell(motorOpen.length)} ramp open to motorized boats, ${spell(limitedOpen.length)} limited to paddlecraft or at your own risk, and ${spell(closedAll.length)} closed. Every ramp still usable sits below its own published minimum elevation.`
+  : 'Park Service status and published minimum elevation for every Lake Powell launch ramp, next to the live USGS gage reading.';
 
 // Quotable Authority Sentence (GEO), same pattern as the sibling lake pages.
-const qas = live && elev != null && openCount != null
-  ? `At ${fmtNum(elev, 1)} ft on ${asOfFmt}, ${openCountLabel} of the ${rampTotalLabel} Lake Powell launch ${rampNoun(ramps.length)} with a published minimum elevation ${openCount === 1 ? 'clears' : 'clear'} it, per USGS gage 09379900 and the National Park Service ramp pages.`
+const qas = live && elev != null
+  ? `At ${fmtNum(elev, 1)} ft on ${asOfFmt}, the National Park Service lists ${spell(motorOpen.length)} Lake Powell ${rampNoun(motorOpen.length)} open to motorized boats, ${spell(limitedOpen.length)} usable only for paddlecraft or at your own risk, and ${spell(closedAll.length)} closed.`
   : '';
 
 const articleLd = {
@@ -180,7 +195,7 @@ const faqs = [
         </div>
         <div>
           <div class="vt">Lake Powell is at <span class="ok">{fmtNum(elev, 1)} ft</span> on {asOfFmt}.</div>
-          <div class="vb">That is {fmtNum(feetBelowFull, 1)} ft below the <a href={NPS}>full pool elevation of {fmtNum(band.fullPoolFt, 0)} ft</a>, and it leaves {openCountLabel} of the {rampTotalLabel} ramps with a published threshold at or above its minimum. Across the last thirty days of <a href={GAGE}>gage readings</a> the lake has {change30dWord} {fmtNum(Math.abs(change30d ?? 0), 2)} ft.</div>
+          <div class="vb">The Park Service lists {spell(motorOpen.length)} {rampNoun(motorOpen.length)} open to motorized boats{motorOpen.length > 0 ? `, ${motorOpen.map((r) => r.name).join(' and ')}` : ''}. {cap(spell(limitedOpen.length))} more are usable only for paddlecraft or at your own risk, and {spell(closedAll.length)} are closed outright. The lake sits {fmtNum(feetBelowFull, 1)} ft below the <a href={NPS}>full pool elevation of {fmtNum(band.fullPoolFt, 0)} ft</a> and has {change30dWord} {fmtNum(Math.abs(change30d ?? 0), 2)} ft across the last thirty days of <a href={GAGE}>gage readings</a>.</div>
         </div>
       </div>
     )}
@@ -205,6 +220,28 @@ const faqs = [
       </div>
 
       <p class="readable" style="margin-top:16px;">Clearing the published elevation is a necessary condition and not a sufficient one, which the status column makes obvious. Confirm with Glen Canyon National Recreation Area before you tow a boat. Park Service status read {rampsAsOfFmt} from <a href={POWELL_RAMPS_SOURCE}>the Glen Canyon lake level effects table</a>.</p>
+    </section>
+
+    <section class="section airy">
+      <h2>Why the elevation cutoff does not tell you if a ramp is open</h2>
+      <p class="readable">Every tracker that publishes these ramps, including this page in its first version, compares the lake against each published minimum and reports how many clear it. That count is misleading, and the Park Service data itself shows why.</p>
+      {usableBelowThreshold.length > 0 ? (
+        <>
+          <p class="readable">Right now the Park Service still lists {spell(usableBelowThreshold.length)} {rampNoun(usableBelowThreshold.length)} as usable in some form while the water sits <span class="em-strong">below</span> the very elevation it publishes for {usableBelowThreshold.length === 1 ? 'it' : 'them'}.</p>
+          <div class="def-table" style="max-width:760px;margin-top:16px;">
+            {usableBelowThreshold.map((r) => (
+              <div class="row">
+                <div class="k">{r.name}</div>
+                <div class="vv">{fmtNum(Math.round((r.minFt - elev!) * 10) / 10, 1)} ft under its published {fmtNum(r.minFt, 0)} ft, and still listed houseboats {r.houseboats || 'not stated'}, small motorized {r.smallMotorized || 'not stated'}, non motorized {r.nonMotorized || 'not stated'}.</div>
+              </div>
+            ))}
+          </div>
+        </>
+      ) : (
+        <p class="readable">At today's level the status column and the published elevations happen to agree, which is unusual. The comparison below still applies whenever they diverge.</p>
+      )}
+      <p class="readable" style="margin-top:16px;">The reason is that a published minimum describes launching a motorized boat off that concrete. It does not describe a kayak carried to the water, and it does not describe a ramp the Park Service is willing to leave open at your own risk. So the elevation is the physics and the status is the decision, and a headline built on the physics alone will tell a paddler a ramp is unusable when the operator says otherwise.</p>
+      <p class="readable">That is why the roster above prints both, and why the count at the top of this page counts Park Service status rather than elevation margins.</p>
     </section>
 
     <section class="section airy">

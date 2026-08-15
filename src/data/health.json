@@ -1,5 +1,5 @@
 {
-  "run_at": "2026-08-08T01:32:20.452Z",
+  "run_at": "2026-08-15T02:44:45.822Z",
   "total": 44,
   "fresh": 25,
   "stale": 0,
@@ -43,7 +43,7 @@
     {
       "slug": "lake-buchanan",
       "feed": "usgs",
-      "as_of": "2026-08-07T20:10:00.000-05:00",
+      "as_of": "2026-08-14T21:25:00.000-05:00",
       "age_days": 0,
       "fresh": true,
       "status": "fresh"
@@ -51,7 +51,7 @@
     {
       "slug": "medina-lake",
       "feed": "usgs",
-      "as_of": "2026-08-07T20:00:00.000-05:00",
+      "as_of": "2026-08-14T21:00:00.000-05:00",
       "age_days": 0,
       "fresh": true,
       "status": "fresh"
@@ -59,7 +59,7 @@
     {
       "slug": "canyon-lake",
       "feed": "usgs",
-      "as_of": "2026-08-07T20:15:00.000-05:00",
+      "as_of": "2026-08-14T21:15:00.000-05:00",
       "age_days": 0,
       "fresh": true,
       "status": "fresh"
@@ -83,7 +83,7 @@
     {
       "slug": "lake-belton",
       "feed": "usgs",
-      "as_of": "2026-08-07T20:00:00.000-05:00",
+      "as_of": "2026-08-14T21:00:00.000-05:00",
       "age_days": 0,
       "fresh": true,
       "status": "fresh"
@@ -99,7 +99,7 @@
     {
       "slug": "lake-somerville",
       "feed": "usgs",
-      "as_of": "2026-08-07T20:00:00.000-05:00",
+      "as_of": "2026-08-14T21:00:00.000-05:00",
       "age_days": 0,
       "fresh": true,
       "status": "fresh"
@@ -115,8 +115,8 @@
     {
       "slug": "lake-fork",
       "feed": "usgs",
-      "as_of": "2026-08-07T19:30:00.000-05:00",
-      "age_days": 0,
+      "as_of": "2026-08-14T20:30:00.000-05:00",
+      "age_days": 0.1,
       "fresh": true,
       "status": "fresh"
     },
@@ -131,8 +131,8 @@
     {
       "slug": "lake-whitney",
       "feed": "usgs",
-      "as_of": "2026-08-07T19:15:00.000-05:00",
-      "age_days": 0.1,
+      "as_of": "2026-08-14T21:15:00.000-05:00",
+      "age_days": 0,
       "fresh": true,
       "status": "fresh"
     },
@@ -147,15 +147,15 @@
     {
       "slug": "lake-mead",
       "feed": "usbr",
-      "as_of": "2026-08-07T17:00:00",
-      "age_days": 0.6,
+      "as_of": "2026-08-14T18:00:00",
+      "age_days": 0.7,
       "fresh": true,
       "status": "fresh"
     },
     {
       "slug": "lake-powell",
       "feed": "usgs",
-      "as_of": "2026-08-07T17:45:00.000-07:00",
+      "as_of": "2026-08-14T18:45:00.000-07:00",
       "age_days": 0,
       "fresh": true,
       "status": "fresh"
@@ -163,23 +163,23 @@
     {
       "slug": "lake-mohave",
       "feed": "usbr",
-      "as_of": "2026-08-07T17:00:00",
-      "age_days": 0.6,
+      "as_of": "2026-08-14T18:00:00",
+      "age_days": 0.7,
       "fresh": true,
       "status": "fresh"
     },
     {
       "slug": "lake-havasu",
       "feed": "usbr",
-      "as_of": "2026-08-07T17:00:00",
-      "age_days": 0.6,
+      "as_of": "2026-08-14T18:00:00",
+      "age_days": 0.7,
       "fresh": true,
       "status": "fresh"
     },
     {
       "slug": "lake-shasta",
       "feed": "cdec",
-      "as_of": "2026-8-6",
+      "as_of": "2026-8-13",
       "age_days": 2.4,
       "fresh": true,
       "status": "fresh"
@@ -187,7 +187,7 @@
     {
       "slug": "lake-oroville",
       "feed": "cdec",
-      "as_of": "2026-8-6",
+      "as_of": "2026-8-13",
       "age_days": 2.4,
       "fresh": true,
       "status": "fresh"
@@ -195,7 +195,7 @@
     {
       "slug": "lake-berryessa",
       "feed": "cdec",
-      "as_of": "2026-8-6",
+      "as_of": "2026-8-13",
       "age_days": 2.4,
       "fresh": true,
       "status": "fresh"
@@ -203,7 +203,7 @@
     {
       "slug": "folsom-lake",
       "feed": "cdec",
-      "as_of": "2026-8-6",
+      "as_of": "2026-8-13",
       "age_days": 2.4,
       "fresh": true,
       "status": "fresh"
@@ -219,7 +219,7 @@
     {
       "slug": "lake-allatoona",
       "feed": "usgs",
-      "as_of": "2026-08-07T21:15:00.000-04:00",
+      "as_of": "2026-08-14T22:15:00.000-04:00",
       "age_days": 0,
       "fresh": true,
       "status": "fresh"
@@ -299,7 +299,7 @@
     {
       "slug": "nolin-river-lake",
       "feed": "usgs",
-      "as_of": "2026-08-07T20:10:00.000-05:00",
+      "as_of": "2026-08-14T21:10:00.000-05:00",
       "age_days": 0,
       "fresh": true,
       "status": "fresh"
@@ -323,7 +323,7 @@
     {
       "slug": "pine-flat-lake",
       "feed": "cdec",
-      "as_of": "2026-8-6",
+      "as_of": "2026-8-13",
       "age_days": 2.4,
       "fresh": true,
       "status": "fresh"
@@ -331,7 +331,7 @@
     {
       "slug": "lake-isabella",
       "feed": "cdec",
-      "as_of": "2026-8-6",
+      "as_of": "2026-8-13",
       "age_days": 2.4,
       "fresh": true,
       "status": "fresh"
@@ -339,7 +339,7 @@
     {
       "slug": "millerton-lake",
       "feed": "cdec",
-      "as_of": "2026-8-6",
+      "as_of": "2026-8-13",
       "age_days": 2.4,
       "fresh": true,
       "status": "fresh"
@@ -347,7 +347,7 @@
     {
       "slug": "new-melones-lake",
       "feed": "cdec",
-      "as_of": "2026-8-6",
+      "as_of": "2026-8-13",
       "age_days": 2.4,
       "fresh": true,
       "status": "fresh"
@@ -355,7 +355,7 @@
     {
       "slug": "don-pedro-lake",
       "feed": "cdec",
-      "as_of": "2026-8-6",
+      "as_of": "2026-8-13",
       "age_days": 2.4,
       "fresh": true,
       "status": "fresh"
@@ -363,7 +363,7 @@
     {
       "slug": "san-luis-reservoir",
       "feed": "cdec",
-      "as_of": "2026-8-6",
+      "as_of": "2026-8-13",
       "age_days": 2.4,
       "fresh": true,
       "status": "fresh"
@@ -371,7 +371,7 @@
     {
       "slug": "lake-cachuma",
       "feed": "cdec",
-      "as_of": "2026-8-6",
+      "as_of": "2026-8-13",
       "age_days": 2.4,
       "fresh": true,
       "status": "fresh"
@@ -379,7 +379,7 @@
     {
       "slug": "lake-casitas",
       "feed": "cdec",
-      "as_of": "2026-8-6",
+      "as_of": "2026-8-13",
       "age_days": 2.4,
       "fresh": true,
       "status": "fresh"

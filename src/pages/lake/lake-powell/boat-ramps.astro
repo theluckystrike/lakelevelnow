@@ -1,0 +1,286 @@
+---
+// /lake/lake-powell/boat-ramps/ — which Lake Powell launch ramps clear their published
+// minimum elevation at today's reading.
+//
+// Content originated from the portfolio-seo-pipeline run 2026-08-14 (gates L1-L12 green,
+// H1 information gain 0.65 against the "lake powell water level today" SERP, H4 0.86) and
+// was re-scoped to the ramp question before shipping. The reason is cannibalization: the
+// pipeline drafted against "lake powell water level today", which is the head term
+// /lake/lake-powell/ already owns in its own title, and the streambed reconciliation plus
+// the elevation calculator already ship on /lake/lake-powell/depth/. What no page on this
+// site carried was the per-ramp minimum elevations, which both existing pages explicitly
+// hand off to the operator, and the datum plus multi-series reconciliation behind them.
+//
+// Every displayed number is a deterministic transform of the validated reading plus the
+// published constants in lib/lakes.ts; nothing is typed by hand in the markup.
+import BaseLayout from '../../../layouts/BaseLayout.astro';
+import { LAKES, getReading, fmtNum, feedLabel, POWELL_BAND, POWELL_RAMPS, POWELL_APRIL_2023, changeOverSeries } from '../../../lib/lakes';
+import { authorLd, breadcrumbLd, speakableLd, absUrl } from '../../../lib/seo';
+
+const lake = LAKES.find((l) => l.slug === 'lake-powell')!;
+const reading = getReading('lake-powell');
+const live = !!(reading && reading.fresh);
+const elev = live ? reading!.level_ft : null;
+
+const band = POWELL_BAND;
+const ramps = [...POWELL_RAMPS].sort((a, b) => a.minFt - b.minFt);
+const openCount = elev != null ? ramps.filter((r) => elev >= r.minFt).length : null;
+const lowestRamp = ramps[0];
+const gapToLowest = elev != null ? Math.round((elev - lowestRamp.minFt) * 10) / 10 : null;
+const feetBelowFull = elev != null ? Math.round((band.fullPoolFt - elev) * 10) / 10 : null;
+const vsApril2023 = elev != null ? Math.round((elev - POWELL_APRIL_2023.riseFt) * 100) / 100 : null;
+const change30d = changeOverSeries(reading?.series);
+
+// Plural agreement. With five ramps and a lake near the lowest threshold, the count is
+// routinely 1, and "1 of the 5 ramps sit" is the kind of sentence that reads as generated.
+const rampNoun = (n: number) => (n === 1 ? 'ramp' : 'ramps');
+const WORDS = ['none', 'one', 'two', 'three', 'four', 'five'];
+const spell = (n: number | null) => (n != null && n >= 0 && n < WORDS.length ? WORDS[n] : String(n));
+const openCountLabel = spell(openCount);
+const rampTotalLabel = spell(ramps.length);
+// "moved -3.80 ft" reads as a machine wrote it. Say which way it went.
+const change30dWord = change30d == null ? '' : change30d < 0 ? 'fallen' : change30d > 0 ? 'risen' : 'held';
+
+const asOfFmt = reading?.as_of ? new Date(reading.as_of).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : '';
+const asOfIso = reading?.as_of ? String(reading.as_of).slice(0, 10) : '';
+
+const PATH = '/lake/lake-powell/boat-ramps/';
+const GAGE = 'https://waterdata.usgs.gov/monitoring-location/09379900/';
+const NPS = 'https://www.nps.gov/glca/faqs.htm';
+
+const title = live && openCount != null
+  ? `Lake Powell boat ramps, ${openCount} of ${ramps.length} above minimum elevation today`
+  : 'Lake Powell boat ramp minimum elevations';
+const description = live && elev != null && openCount != null
+  ? `Lake Powell is at ${fmtNum(elev, 1)} ft, so ${openCount} of ${ramps.length} launch ramps with a published National Park Service minimum elevation clear it. Every threshold is quoted from the NPS page that publishes it.`
+  : 'The minimum lake elevation the National Park Service publishes for each Lake Powell launch ramp, quoted from the NPS page that publishes it, compared against the live USGS gage reading.';
+
+// Quotable Authority Sentence (GEO), same pattern as the sibling lake pages.
+const qas = live && elev != null && openCount != null
+  ? `At ${fmtNum(elev, 1)} ft on ${asOfFmt}, ${openCountLabel} of the ${rampTotalLabel} Lake Powell launch ${rampNoun(ramps.length)} with a published minimum elevation ${openCount === 1 ? 'clears' : 'clear'} it, per USGS gage 09379900 and the National Park Service ramp pages.`
+  : '';
+
+const articleLd = {
+  '@context': 'https://schema.org',
+  '@type': 'Article',
+  headline: 'Which Lake Powell boat ramps are usable right now',
+  description: 'The published National Park Service minimum elevation for each Lake Powell launch ramp, compared against the live USGS gage reading, with the vertical datum and the source series stated.',
+  url: absUrl(PATH),
+  mainEntityOfPage: absUrl(PATH),
+  datePublished: '2026-08-15',
+  dateModified: asOfIso || '2026-08-15',
+  author: { '@type': 'Person', name: 'Mike', url: absUrl('/about/'), description: 'Independent developer behind zovo.one, building small fast utility sites including LakeLevelNow. Works on LakeLevelNow full-time.' },
+  publisher: { '@type': 'Organization', name: 'LakeLevelNow', url: absUrl('/') },
+};
+
+const datasetLd = live && elev != null ? {
+  '@context': 'https://schema.org',
+  '@type': 'Dataset',
+  name: 'Lake Powell launch ramp minimum elevations against the live surface elevation',
+  description: 'Published National Park Service minimum lake elevation per launch ramp, with the live USGS surface elevation and the computed margin for each ramp. Recomputed on every build.',
+  url: absUrl(PATH),
+  variableMeasured: [
+    { '@type': 'PropertyValue', name: 'Surface elevation', value: String(elev), unitText: 'ft above MSL' },
+    { '@type': 'PropertyValue', name: 'Vertical datum', value: 'NGVD29' },
+    { '@type': 'PropertyValue', name: 'Ramps at or above their published minimum', value: String(openCount), unitText: 'count' },
+    ...ramps.map((r) => ({
+      '@type': 'PropertyValue' as const,
+      name: `${r.name} minimum elevation`,
+      value: String(r.minFt),
+      unitText: 'ft above MSL',
+    })),
+  ],
+  creator: { '@type': 'Organization', name: 'U.S. Geological Survey', url: GAGE },
+  dateModified: asOfIso || '2026-08-15',
+  isAccessibleForFree: true,
+} : null;
+
+const ld = [articleLd, ...(datasetLd ? [datasetLd] : []), speakableLd(PATH), authorLd(),
+  breadcrumbLd([{ name: 'Home', path: '/' }, { name: 'Lakes', path: '/lakes' }, { name: 'Lake Powell', path: '/lake/lake-powell' }, { name: 'Boat ramps', path: PATH }])];
+
+const faqs = [
+  {
+    q: 'Which Lake Powell ramps can I launch from right now?',
+    a: live && elev != null && openCount != null
+      ? `At ${fmtNum(elev, 1)} ft, ${openCountLabel} of the ${rampTotalLabel} ramps with a published minimum elevation ${openCount === 1 ? 'clears' : 'clear'} it. The table above shows the margin for each one. A ramp clearing its published elevation is a necessary condition, not a promise that it is open, because closures also happen for dredging, debris and staffing. Confirm with Glen Canyon National Recreation Area before you tow a boat.`
+      : 'The table above lists the published minimum elevation for each ramp. Compare it against the current reading and confirm with Glen Canyon National Recreation Area before you travel.',
+  },
+  {
+    q: 'What does the minimum elevation for a ramp actually mean?',
+    a: 'It is the lake elevation the National Park Service publishes as the point where that concrete stops being usable for launching. Below it the water line has retreated past the end of the ramp. The exact wording differs per ramp, so this page quotes each one rather than paraphrasing, and some thresholds apply only to a vessel size class.',
+  },
+  {
+    q: 'Why do other sites show a different Lake Powell elevation than this page?',
+    a: 'Three federal series publish Lake Powell elevations and they do not agree to the tenth of a foot on any given day, because a 15-minute instantaneous reading, an approved daily mean and a daily pool elevation are three different measurements. This page reads the instantaneous USGS series and says so. The section above shows all three for a single date so the size of the gap is visible.',
+  },
+  {
+    q: 'What vertical datum are these numbers on?',
+    a: 'The USGS gage reports parameter 62614 against the National Geodetic Vertical Datum of 1929, so every elevation on this page is NGVD29. That matters when comparing against a site that reports NAVD88, because the two datums do not share a zero and the difference is not a rounding artifact.',
+  },
+  {
+    q: 'How close is the lake to where it was in April 2023?',
+    a: live && vsApril2023 != null
+      ? `Today's reading sits ${fmtNum(Math.abs(vsApril2023), 2)} ft ${vsApril2023 < 0 ? 'below' : 'above'} the ${fmtNum(POWELL_APRIL_2023.riseFt, 2)} ft that Reclamation's daily record carries for 2023-04-13. USGS EROS states the lake's lowest level came in April 2023, so that date is the useful comparison point, though no source found states in words which single day of the record was the lowest.`
+      : `Reclamation's daily record carries ${fmtNum(POWELL_APRIL_2023.riseFt, 2)} ft for 2023-04-13, and USGS EROS states the lake's lowest level came in April 2023.`,
+  },
+];
+---
+<BaseLayout title={title} description={description} path={PATH} jsonLd={ld}>
+  <div class="container">
+    <div class="crumbs" style="padding-top:20px;">
+      <a href="/">Home</a><span class="sep">›</span>
+      <a href="/lakes">Lakes</a><span class="sep">›</span>
+      <a href="/lake/lake-powell/">Lake Powell</a><span class="sep">›</span>
+      <span>Boat ramps</span>
+    </div>
+
+    <div style="padding-top:16px;">
+      <h1>Which Lake Powell boat ramps are usable right now</h1>
+      <p style="font-size:13px;color:var(--t2);margin-top:8px;">By <a href="/about/">Mike</a>, independent developer behind <a href="https://zovo.one" rel="noopener">zovo.one</a>. Readings pulled live from the same {feedLabel(reading?.feed) || 'USGS'} feed the operator reports to.{asOfFmt && ` Data checked ${asOfFmt}.`}</p>
+    </div>
+
+    {qas && <p class="qas" data-keyword="lake powell boat ramps" style="font-size:15px;color:var(--t1);margin-top:14px;max-width:660px;font-weight:500;">{qas}</p>}
+
+    {!live && (
+      <div class="callout a" style="margin-top:20px;">
+        <p>Live feed reconnecting. The published minimum elevation for each ramp does not change with the level, so the table below still stands; only the comparison against today's reading is paused. Check the <a href={GAGE}>USGS gage</a> directly in the meantime.</p>
+      </div>
+    )}
+
+    {live && elev != null && (
+      <div class="verdict" style="margin-top:20px;">
+        <div class="ic">
+          <svg width="18" height="18" viewBox="0 0 18 18" fill="none" aria-hidden="true"><path d="M4 9.5L7.5 13L14 5" stroke="white" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"></path></svg>
+        </div>
+        <div>
+          <div class="vt">Lake Powell is at <span class="ok">{fmtNum(elev, 1)} ft</span> on {asOfFmt}.</div>
+          <div class="vb">That is {fmtNum(feetBelowFull, 1)} ft below the <a href={NPS}>full pool elevation of {fmtNum(band.fullPoolFt, 0)} ft</a>, and it leaves {openCountLabel} of the {rampTotalLabel} ramps with a published threshold at or above its minimum. Across the last thirty days of <a href={GAGE}>gage readings</a> the lake has {change30dWord} {fmtNum(Math.abs(change30d ?? 0), 2)} ft.</div>
+        </div>
+      </div>
+    )}
+
+    <section class="section airy">
+      <h2>Every published ramp minimum, against today's level</h2>
+      <p class="readable">The National Park Service publishes a minimum lake elevation for each launch ramp at Glen Canyon. Those thresholds are fixed numbers, so the only thing that changes is where the lake sits against them. The wording is quoted from each ramp's own page because the Park Service phrases them differently, and two of them apply only to a vessel size class.</p>
+
+      <div class="def-table" style="max-width:660px;margin-top:16px;">
+        {ramps.map((r) => (
+          <div class="row">
+            <div class="k"><a href={r.url}>{r.name}</a> · {fmtNum(r.minFt, 0)} ft</div>
+            <div class="vv">
+              {elev != null
+                ? (elev >= r.minFt
+                  ? <span class="em-strong">{fmtNum(Math.round((elev - r.minFt) * 10) / 10, 1)} ft above its published minimum</span>
+                  : <span>{fmtNum(Math.round((r.minFt - elev) * 10) / 10, 1)} ft short of its published minimum</span>)
+                : <span>Published minimum {fmtNum(r.minFt, 0)} ft</span>}
+              {' '}{r.note}
+            </div>
+          </div>
+        ))}
+      </div>
+
+      <p class="readable" style="margin-top:16px;">Clearing the published elevation is a necessary condition and not a sufficient one. Ramps also close for dredging, debris, damage and staffing, and the Park Service updates each page on its own schedule. Confirm with Glen Canyon National Recreation Area before you tow a boat.</p>
+    </section>
+
+    <section class="section airy">
+      <h2>Check any elevation against the ramp thresholds</h2>
+      <p class="readable">Type a surface elevation in feet and this compares it against every published threshold above. It runs the same subtraction the table does, so a forecast elevation or a figure from another site can be checked directly.</p>
+      <div style="max-width:660px;margin-top:14px;">
+        <label for="ramp-elev" style="font-size:13px;color:var(--t2);display:block;margin-bottom:6px;">Surface elevation in feet</label>
+        <input id="ramp-elev" type="number" step="0.1" inputmode="decimal" style="font-family:var(--mono);font-size:16px;padding:10px 12px;border:1px solid var(--border);border-radius:var(--r-sm);width:180px;" />
+        <ul id="ramp-out" role="status" aria-live="polite" style="margin-top:14px;padding-left:18px;font-size:15px;color:var(--t1);line-height:1.7;"></ul>
+        <noscript><p class="readable">The table above carries every published threshold, so the comparison can be made by hand against the current reading.</p></noscript>
+      </div>
+    </section>
+
+    <section class="section airy">
+      <h2>Which elevation these thresholds are compared against</h2>
+      <p class="readable">A ramp threshold is only meaningful next to an elevation measured the same way. Two things decide that, and both are stated below so the comparison can be checked rather than trusted.</p>
+      <p class="readable">The first is the vertical datum. The <a href={GAGE}>USGS gage at Glen Canyon Dam</a> reports parameter 62614 against the National Geodetic Vertical Datum of 1929, so every figure on this page is NGVD29. A site reporting NAVD88 is using a different zero, and the offset is not a rounding artifact. Comparing a ramp cutoff on one datum against a lake reading on another quietly moves the answer.</p>
+      <p class="readable">The second is which series the reading came from. Three federal series publish Lake Powell elevations, and they disagree on any given day because they are measuring differently rather than because one is wrong. Here is what each published for a single date, 2023-04-13.</p>
+
+      <div class="def-table" style="max-width:660px;margin-top:16px;">
+        <div class="row"><div class="k"><a href={POWELL_APRIL_2023.riseUrl}>Reclamation daily</a></div><div class="vv">{fmtNum(POWELL_APRIL_2023.riseFt, 2)} ft, the daily pool elevation for that date</div></div>
+        <div class="row"><div class="k"><a href={POWELL_APRIL_2023.usgsDailyMeanUrl}>USGS daily mean</a></div><div class="vv">{fmtNum(POWELL_APRIL_2023.usgsDailyMeanFt, 1)} ft, the approved daily average, statistic code 00003</div></div>
+        <div class="row"><div class="k"><a href={POWELL_APRIL_2023.usgsInstantMinUrl}>USGS instantaneous</a></div><div class="vv">{fmtNum(POWELL_APRIL_2023.usgsInstantMinFt, 1)} ft, the lowest of that day's 15-minute readings</div></div>
+        <div class="row"><div class="k">Spread</div><div class="vv">{fmtNum(Math.round((POWELL_APRIL_2023.riseFt - POWELL_APRIL_2023.usgsInstantMinFt) * 100) / 100, 2)} ft between the highest and lowest of the three</div></div>
+      </div>
+
+      <p class="readable" style="margin-top:16px;">A daily mean smooths a day that moved. An instantaneous reading catches one moment inside it. A pool elevation is Reclamation's own operational record. All three are correct and they are not interchangeable, which is why this page reads the instantaneous series and says so rather than publishing a number with no series attached.</p>
+      <p class="readable"><a href={POWELL_APRIL_2023.erosUrl}>USGS EROS</a> states the lake's lowest level came in April 2023. No source found states in words which single day of the record was the lowest, so this page does not call any of the three figures above a record low. It calls them what they are, the figures each series publishes for that date.</p>
+      {live && vsApril2023 != null && (
+        <p class="readable">Today's reading sits <span class="em-strong">{fmtNum(Math.abs(vsApril2023), 2)} ft {vsApril2023 < 0 ? 'below' : 'above'}</span> the {fmtNum(POWELL_APRIL_2023.riseFt, 2)} ft Reclamation carries for 2023-04-13.</p>
+      )}
+    </section>
+
+    <section class="section airy">
+      <h2>Questions about launching at Lake Powell</h2>
+      {faqs.map((f) => <div class="faq-item"><div class="q">{f.q}</div><div class="a">{f.a}</div></div>)}
+    </section>
+
+    <section class="section" style="padding-bottom:48px;">
+      <h2 style="margin-bottom:8px;">Where these numbers come from</h2>
+      <p class="readable">The live surface elevation is the most recent reading from <a href={GAGE}>USGS monitoring location 09379900</a>, parameter 62614, on the NGVD29 datum. It refreshes on every build of this site, and a reading older than seven days is never shown as current.</p>
+      <p class="readable">Each ramp threshold is quoted from the National Park Service page for that ramp, linked in the table above. Full pool of {fmtNum(band.fullPoolFt, 0)} ft comes from the <a href={NPS}>Glen Canyon FAQ</a>. The 2023 comparison figures come from the three federal series linked beside them. Every margin, gap and change on this page is subtraction done in code against those sources, not a figure typed by hand.</p>
+      <p class="readable">Related on this site, <a href="/lake/lake-powell/">the live Lake Powell level</a> with its 64 year almanac context, and <a href="/lake/lake-powell/depth/">how deep the water is at the dam</a>.</p>
+      <p style="font-size:13px;color:var(--t2);max-width:64ch;margin-top:14px;">Levels are point-in-time readings and can lag real conditions, confirm ramp and hazard status with the lake operator before heading out. Not affiliated with any government agency, data is republished from public USGS, CDEC, and USBR feeds.</p>
+    </section>
+  </div>
+
+  <script is:inline define:vars={{ RAMPS: ramps.map((r) => ({ name: r.name, minFt: r.minFt })), START: elev }}>
+    // Ramp threshold comparator. NASA Power of 10 posture: assert every precondition,
+    // validate every lookup and every parsed value, bound the input domain, and return
+    // silently rather than binding a half-wired widget.
+    (function () {
+      if (!Array.isArray(RAMPS) || RAMPS.length === 0) return;
+      var input = document.getElementById('ramp-elev');
+      var out = document.getElementById('ramp-out');
+      if (!input || !out) return;
+
+      // Lake Powell cannot physically sit outside this band; anything else is a typo.
+      var MIN_ELEV = 3000;
+      var MAX_ELEV = 3800;
+
+      function fmt(n, dp) {
+        return Number(n).toFixed(dp);
+      }
+
+      function render() {
+        var raw = parseFloat(input.value);
+        if (!isFinite(raw)) {
+          out.innerHTML = '<li>Type a surface elevation in feet to compare it against every published ramp threshold.</li>';
+          return;
+        }
+        if (raw < MIN_ELEV || raw > MAX_ELEV) {
+          out.innerHTML = '<li>That elevation is outside the range Lake Powell can occupy, so there is nothing to compare.</li>';
+          return;
+        }
+        var lines = [];
+        var open = 0;
+        for (var i = 0; i < RAMPS.length; i++) {
+          var r = RAMPS[i];
+          if (!r || !isFinite(r.minFt)) continue;
+          var gap = raw - r.minFt;
+          if (gap >= 0) {
+            open++;
+            lines.push(r.name + ', ' + fmt(gap, 1) + ' ft above its published minimum of ' + fmt(r.minFt, 0) + ' ft');
+          } else {
+            lines.push(r.name + ', ' + fmt(Math.abs(gap), 1) + ' ft short of its published minimum of ' + fmt(r.minFt, 0) + ' ft');
+          }
+        }
+        if (lines.length === 0) return;
+        var total = lines.length;
+        lines.unshift('At ' + fmt(raw, 1) + ' ft, ' + open + ' of ' + total + ' ramps ' + (open === 1 ? 'clears its' : 'clear their') + ' published minimum.');
+        var html = '';
+        for (var j = 0; j < lines.length; j++) {
+          html += '<li>' + lines[j] + '</li>';
+        }
+        out.innerHTML = html;
+      }
+
+      input.addEventListener('input', render);
+      if (isFinite(START)) input.value = String(START);
+      render();
+    })();
+  </script>
+</BaseLayout>

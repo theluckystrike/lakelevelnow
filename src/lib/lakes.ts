@@ -153,6 +153,69 @@ export const POWELL_BAND = {
   maxDepthFullPoolFt: 561,
 };
 
+// The three federal figures for Lake Powell on 2023-04-13. They differ because a daily
+// pool elevation, an approved daily mean and a 15-minute instantaneous reading are three
+// different measurements of the same lake, not because any of them is wrong. All three
+// were re-fetched and citation-verified in the portfolio-seo-pipeline run 2026-08-14.
+// NOTE ON WORDING: no fetchable source states in words that 2023-04-13 was the minimum
+// DAY of the record, so nothing here may be called a record low. USGS EROS states only
+// that the lowest level came in April 2023. Describe these as the figures each series
+// publishes for that date, which is exactly what they are.
+export const POWELL_APRIL_2023 = {
+  riseFt: 3519.92,
+  riseUrl: 'https://www.usbr.gov/uc/water/hydrodata/reservoir_data/919/csv/49.csv',
+  usgsDailyMeanFt: 3519.5,
+  usgsDailyMeanUrl: 'https://waterservices.usgs.gov/nwis/dv/?sites=09379900&parameterCd=62614&startDT=2023-04-10&endDT=2023-04-16&format=rdb',
+  usgsInstantMinFt: 3519.1,
+  usgsInstantMinUrl: 'https://nwis.waterservices.usgs.gov/nwis/iv/?sites=09379900&parameterCd=62614&startDT=2023-04-13&endDT=2023-04-13&format=rdb',
+  erosUrl: 'https://eros.usgs.gov/earthshots/water-levels',
+};
+
+// Lake Powell launch ramps, each with the minimum lake elevation the National Park
+// Service publishes for it and the NPS page that publishes it. Sourced and verified
+// through the portfolio-seo-pipeline run 2026-08-14: every entry below was re-fetched
+// and its `quote` matched verbatim against the live NPS page at L7 citation integrity.
+// The wording differs per ramp because NPS words each page differently, so the quote is
+// carried rather than paraphrased, and `minFt` is the number that quote states.
+// Exposed here so the ramp page never types a reference elevation by hand.
+export const POWELL_RAMPS = [
+  {
+    name: 'Stateline Auxiliary',
+    minFt: 3515,
+    url: 'https://www.nps.gov/places/stateline-auxiliary-launch-ramp.htm',
+    quote: 'This launch ramp is operable for vessel launch and retrieve at lake elevation 3515 ft or above.',
+    note: 'The lowest published threshold on the lake.',
+  },
+  {
+    name: 'Bullfrog Main spur',
+    minFt: 3540,
+    url: 'https://www.nps.gov/places/bullfrog-main-launch-ramp.htm',
+    quote: "available for vessels less than 25' long until the lake is below 3540'",
+    note: 'Vessels under 25 feet only.',
+  },
+  {
+    name: 'Wahweap Main',
+    minFt: 3548,
+    url: 'https://www.nps.gov/places/wahweap-main-launch-ramp.htm',
+    quote: 'This launch ramp is available to motorized vessels when the lake level elevation is above 3548 ft.',
+    note: 'Motorized vessels.',
+  },
+  {
+    name: 'Halls Crossing',
+    minFt: 3557,
+    url: 'https://www.nps.gov/places/halls-crossing-launch-ramp.htm',
+    quote: 'This ramp is available for all vessel launching until the lake level elevation 3557 ft or above.',
+    note: 'All vessel launching.',
+  },
+  {
+    name: 'Bullfrog Main',
+    minFt: 3578,
+    url: 'https://www.nps.gov/places/bullfrog-main-launch-ramp.htm',
+    quote: "The ramp is operable for launching motorized vessels until the lake level is below 3578'.",
+    note: 'Motorized vessels.',
+  },
+];
+
 // Net change across a reading's series (last minus first). The series spans ~30 days
 // (SERIES_DAYS in fetch-levels.mjs), so this is the ~30-day elevation change. Pure
 // math on the validated USGS reading; returns null if the series is too short.

@@ -70,7 +70,7 @@ const deltaUp = (reading.delta_24h ?? 0) >= 0;
   <!-- Stats grid 3×2 -->
   <div class="stat-grid">
     {hasPct && <div class="stat-cell"><div class="v" style={`color:${tone}`}>{pct}%</div><div class="l">percent full</div></div>}
-    {reading.level_ft != null && <div class="stat-cell"><div class="v">{fmtNum(reading.level_ft,1)}</div><div class="l">{reading.param.includes('gage') ? 'gage height (ft)' : 'water level (ft msl)'}</div></div>}
+    {reading.level_ft != null && <div class="stat-cell"><div class="v">{fmtNum(reading.level_ft,1)}</div><div class="l">{reading.param?.includes('gage') ? 'gage height (ft)' : 'water level (ft msl)'}</div></div>}
     {reading.feet_from_full != null && <div class="stat-cell"><div class={`v ${reading.feet_from_full > 0 ? 'down' : 'up'}`}>{fmtNum(Math.abs(reading.feet_from_full),1)}</div><div class="l">{reading.feet_from_full > 0 ? 'ft below full pool' : 'ft above full pool'}</div></div>}
     {reading.delta_24h != null && <div class="stat-cell"><div class={`v ${deltaUp ? 'up' : 'down'}`}>{deltaUp ? '+' : '−'}{fmtNum(Math.abs(reading.delta_24h),2)}</div><div class="l">24-hour change (ft)</div></div>}
     {lake.full_pool_ft != null && <div class="stat-cell"><div class="v">{fmtNum(lake.full_pool_ft,0)}</div><div class="l">full pool (ft ref.)</div></div>}

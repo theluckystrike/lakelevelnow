@@ -50,6 +50,23 @@ const rampTotalLabel = spell(ramps.length);
 // "moved -3.80 ft" reads as a machine wrote it. Say which way it went.
 const change30dWord = change30d == null ? '' : change30d < 0 ? 'fallen' : change30d > 0 ? 'risen' : 'held';
 
+// Observed rate of change across the validated series, and what it implies for the one
+// threshold the lake is currently above. This is arithmetic on readings already on the
+// page, not a forecast: reservoirs are operated, so the rate changes when releases change.
+// Framed as "if the last N days repeated" for exactly that reason.
+const series = reading?.series ?? [];
+const spanDays = series.length >= 2
+  ? (new Date(series[series.length - 1].t).getTime() - new Date(series[0].t).getTime()) / 86400000
+  : null;
+const ratePerDay = spanDays && spanDays > 0 && change30d != null ? change30d / spanDays : null;
+const fallingRate = ratePerDay != null && ratePerDay < 0 ? Math.abs(ratePerDay) : null;
+// Ramps the lake currently clears, and how long that lasts at the observed rate.
+const clearedRamps = elev != null ? ramps.filter((r) => elev >= r.minFt) : [];
+const countdowns = fallingRate && fallingRate > 0 && elev != null
+  ? clearedRamps.map((r) => ({ name: r.name, minFt: r.minFt, days: Math.round((elev - r.minFt) / fallingRate) }))
+      .sort((a, b) => a.days - b.days)
+  : [];
+
 const asOfFmt = reading?.as_of ? new Date(reading.as_of).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : '';
 const asOfIso = reading?.as_of ? String(reading.as_of).slice(0, 10) : '';
 
@@ -188,6 +205,30 @@ const faqs = [
       </div>
 
       <p class="readable" style="margin-top:16px;">Clearing the published elevation is a necessary condition and not a sufficient one, which the status column makes obvious. Confirm with Glen Canyon National Recreation Area before you tow a boat. Park Service status read {rampsAsOfFmt} from <a href={POWELL_RAMPS_SOURCE}>the Glen Canyon lake level effects table</a>.</p>
+    </section>
+
+    <section class="section airy">
+      <h2>How long the usable ramps last at this rate</h2>
+      {ratePerDay != null ? (
+        <>
+          <p class="readable">Across the {spanDays != null ? fmtNum(spanDays, 0) : ''} days of readings on this page the lake has {change30dWord} {fmtNum(Math.abs(change30d ?? 0), 2)} ft, an average of {fmtNum(Math.abs(ratePerDay), 3)} ft per day. Carrying that same rate forward gives a rough countdown for every ramp the water still clears.</p>
+          {countdowns.length > 0 ? (
+            <div class="def-table" style="max-width:660px;margin-top:16px;">
+              {countdowns.map((c) => (
+                <div class="row">
+                  <div class="k">{c.name}</div>
+                  <div class="vv">Roughly <span class="em-strong">{c.days} days</span> before the level reaches its published {fmtNum(c.minFt, 0)} ft, if the recent rate holds.</div>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <p class="readable">The lake is below every published threshold right now, so there is nothing to count down.</p>
+          )}
+          <p class="readable" style="margin-top:16px;">Treat that as arithmetic rather than a forecast. Lake Powell is operated, not weather driven alone, so the rate changes whenever Reclamation changes releases upstream or at the dam, and a wet spring reverses it outright. The value of the number is the order of magnitude, weeks against months, not the exact day.</p>
+        </>
+      ) : (
+        <p class="readable">A rate needs at least two readings spaced apart, and the current series does not provide them, so no countdown is shown rather than a guessed one.</p>
+      )}
     </section>
 
     <section class="section airy">

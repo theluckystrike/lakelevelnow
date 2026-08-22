@@ -8,7 +8,7 @@
 import BaseLayout from '../../../layouts/BaseLayout.astro';
 import DepthGauge from '../../../components/DepthGauge.astro';
 import AlmanacContext from '../../../components/AlmanacContext.astro';
-import { LAKES, getReading, fmtNum, POWELL_BAND, changeOverSeries, feedLabel } from '../../../lib/lakes';
+import { LAKES, getReading, fmtNum, POWELL_BAND, changeOverSeries, feedLabel, POWELL_HISTORY, POWELL_HISTORY_SOURCE, compareToMark, fmtRecordDate} from '../../../lib/lakes';
 import { authorLd, breadcrumbLd, speakableLd, absUrl } from '../../../lib/seo';
 
 const lake = LAKES.find((l) => l.slug === 'lake-powell')!;
@@ -24,7 +24,8 @@ const depthPct = depth != null ? Math.round((depth / band.maxDepthFullPoolFt) * 
 const feetBelowFull = elev != null ? Math.round((band.fullPoolFt - elev) * 10) / 10 : null;
 const aboveMinPower = elev != null ? Math.round((elev - band.minPowerPoolFt) * 10) / 10 : null;
 const aboveDead = elev != null ? Math.round((elev - band.deadPoolFt) * 10) / 10 : null;
-const aboveRecordLow = elev != null ? Math.round((elev - band.recordLowFt) * 100) / 100 : null;
+const hist = POWELL_HISTORY;
+const vsPostFillLow = compareToMark(elev, hist.postFillLowFt, 2);
 const bandPct = elev != null ? Math.round(((band.fullPoolFt - elev) / (band.fullPoolFt - band.deadPoolFt)) * 10000) / 100 : null;
 const change30d = changeOverSeries(reading?.series);
 const delta24h = reading?.delta_24h ?? null;
@@ -83,8 +84,8 @@ const datasetLd = live && depth != null ? {
     { '@type': 'PropertyValue', name: 'Feet above minimum power pool', value: String(aboveMinPower), unitText: 'ft' },
     { '@type': 'PropertyValue', name: 'Feet above dead pool', value: String(aboveDead), unitText: 'ft' },
     { '@type': 'PropertyValue', name: 'Share of the live band below full pool', value: String(bandPct), unitText: 'percent' },
-    { '@type': 'PropertyValue', name: 'Record-low elevation since first fill', value: String(band.recordLowFt), unitText: 'ft above MSL' },
-    { '@type': 'PropertyValue', name: 'Feet above the record low', value: String(aboveRecordLow), unitText: 'ft' },
+    { '@type': 'PropertyValue', name: 'Lowest daily pool elevation since the reservoir first filled', value: String(hist.postFillLowFt), unitText: 'ft above MSL' },
+    { '@type': 'PropertyValue', name: `Feet ${vsPostFillLow ? vsPostFillLow.dir : 'from'} the lowest reading since the reservoir first filled`, value: String(vsPostFillLow ? vsPostFillLow.ft : ''), unitText: 'ft' },
     { '@type': 'PropertyValue', name: 'Full pool elevation', value: String(band.fullPoolFt), unitText: 'ft above MSL' },
     { '@type': 'PropertyValue', name: 'Maximum depth at the dam at full pool', value: String(band.maxDepthFullPoolFt), unitText: 'ft' },
     { '@type': 'PropertyValue', name: 'Streambed elevation at the dam', value: String(BED), unitText: 'ft above MSL' },
@@ -202,7 +203,7 @@ const faqs = [
       <div class="def-table" style="max-width:660px;">
         <div class="row"><div class="k">Full pool ({fmtNum(band.fullPoolFt,0)} ft) · <a href={NPS}>NPS</a></div><div class="vv">{fmtNum(band.maxDepthFullPoolFt,0)} ft deep at the dam</div></div>
         <div class="row"><div class="k">Today · <a href={GAGE}>USGS 09379900</a></div><div class="vv">{depth != null ? `${fmtNum(depth,1)} ft deep at the dam` : 'n/a'}</div></div>
-        <div class="row"><div class="k">Record low since first fill ({fmtNum(band.recordLowFt,2)} ft, 2023-04-13) · <a href={USBR_CSV}>USBR archive</a></div><div class="vv">{fmtNum(band.recordLowFt - BED,1)} ft deep at the dam</div></div>
+        <div class="row"><div class="k">Lowest since the reservoir first filled ({fmtNum(hist.postFillLowFt,2)} ft, {fmtRecordDate(hist.postFillLowDate)}) · <a href={USBR_CSV}>USBR archive</a></div><div class="vv">{fmtNum(hist.postFillLowFt - BED,1)} ft deep at the dam</div></div>
         <div class="row"><div class="k">Minimum power pool ({fmtNum(band.minPowerPoolFt,0)} ft) · <a href={USBR_PDF}>USBR</a></div><div class="vv">{fmtNum(band.minPowerPoolFt - BED,0)} ft deep at the dam</div></div>
         <div class="row"><div class="k">Dead pool ({fmtNum(band.deadPoolFt,0)} ft) · <a href={USBR_PDF}>USBR</a></div><div class="vv">{fmtNum(band.deadPoolFt - BED,0)} ft deep at the dam</div></div>
       </div>
@@ -229,9 +230,9 @@ const faqs = [
         </p>
       )}
       <p class="readable">
-        {aboveRecordLow != null && (<>Today's surface sits {fmtNum(aboveRecordLow,2)} ft above the record low since the reservoir first filled, {fmtNum(band.recordLowFt,2)} ft on April 13, 2023, from <a href={USBR_CSV}>Reclamation's daily pool-elevation archive</a>, </>)}
-        {aboveRecordLow == null && (<>The record low since the reservoir first filled is {fmtNum(band.recordLowFt,2)} ft, set on April 13, 2023, per <a href={USBR_CSV}>Reclamation's daily pool-elevation archive</a> and </>)}
-        documented by <a href="https://earthobservatory.nasa.gov/images/151274/lake-powell-hits-new-low">NASA Earth Observatory</a>.
+        {hist.latestIsPostFillLow && (<>Reclamation's most recent daily reading, {fmtNum(hist.postFillLowFt,2)} ft on {fmtRecordDate(hist.postFillLowDate)}, is the lowest in <a href={USBR_CSV}>its complete daily archive</a> since the reservoir first filled. Of the {hist.totalDays.toLocaleString('en-US')} daily readings back to {fmtRecordDate(hist.recordStart)}, {hist.daysBelowLatest.toLocaleString('en-US')} are lower, and {hist.allLowerDaysArePreFill ? <>every one of them falls between {fmtRecordDate(hist.firstBelowDate)} and {fmtRecordDate(hist.lastBelowDate)}, while the reservoir was still filling for the first time</> : <>they are spread across the record</>}. </>)}
+        {!hist.latestIsPostFillLow && vsPostFillLow && (<>Today's surface sits {vsPostFillLow.text} the lowest reading since the reservoir first filled, {fmtNum(hist.postFillLowFt,2)} ft on {fmtRecordDate(hist.postFillLowDate)}, from <a href={USBR_CSV}>Reclamation's daily pool-elevation archive</a>. </>)}
+        The whole-record minimum is lower still, {fmtNum(hist.seriesLowFt,2)} ft on {fmtRecordDate(hist.seriesLowDate)}, but that was the initial filling and is not a comparable operating state. Both figures are recomputed from that archive on every build, and the {hist.firstFillCutoff} boundary used for "since first fill" is ours, not Reclamation's. The April 2023 low is documented by <a href="https://earthobservatory.nasa.gov/images/151274/lake-powell-hits-new-low">NASA Earth Observatory</a>.
       </p>
     </section>
 
@@ -307,7 +308,7 @@ const faqs = [
         A depth reading at the dam won't tell you whether the ramp you're towing to still reaches the water. That depends on where the waterline sits against that one ramp, and it moves as the lake does.
       </p>
       <p class="readable">
-        Treat the depth and the trend here as a starting point. The <a href="/lake/lake-powell/">live level page</a> has the full gauge. If you are towing a boat, <a href="/lake/lake-powell/boat-ramps/">the published minimum elevation for each ramp</a> is the number that decides it. Then check the ramp itself with the people who run it, because these are point-in-time readings and they can lag real conditions.
+        Treat the depth and the trend here as a starting point. The <a href="/lake/lake-powell/">live level page</a> has the full gauge, and the <a href="/lake/lake-powell/chart/">water level chart</a> ranks today against every daily reading Reclamation has published since 1963. If you are towing a boat, <a href="/lake/lake-powell/boat-ramps/">the published minimum elevation for each ramp</a> is the number that decides it. Then check the ramp itself with the people who run it, because these are point-in-time readings and they can lag real conditions.
       </p>
     </section>
 

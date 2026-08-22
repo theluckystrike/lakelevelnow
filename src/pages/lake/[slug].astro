@@ -4,7 +4,7 @@ import LakeGauge from '../../components/LakeGauge.astro';
 import AlmanacContext from '../../components/AlmanacContext.astro';
 import { almanacContext, titleClause, descriptionClause } from '../../lib/almanac';
 import { SITE, AFFILIATES } from '../../consts';
-import { LAKES, getReading, launchRead, status, fmtNum, stateName, POWELL_BAND, changeOverSeries, liveBandBelowFullPct, feedLabel } from '../../lib/lakes';
+import { LAKES, getReading, launchRead, status, fmtNum, stateName, POWELL_BAND, changeOverSeries, liveBandBelowFullPct, feedLabel, POWELL_HISTORY, compareToMark, fmtRecordDate} from '../../lib/lakes';
 import { lakeLd, authorLd, breadcrumbLd, speakableLd } from '../../lib/seo';
 
 export function getStaticPaths() {
@@ -101,7 +101,8 @@ const feetBelowFull = reading?.feet_from_full != null
   : (fullPool != null && elev != null ? Math.round((fullPool - elev) * 100) / 100 : null);
 const aboveMinPower = band && elev != null ? Math.round((elev - band.minPowerPoolFt) * 100) / 100 : null;
 const aboveDead = band && elev != null ? Math.round((elev - band.deadPoolFt) * 100) / 100 : null;
-const aboveRecordLow = band && elev != null ? Math.round((elev - band.recordLowFt) * 100) / 100 : null;
+const postFillLow = isPowell ? POWELL_HISTORY : null;
+const vsPostFillLow = postFillLow ? compareToMark(elev, postFillLow.postFillLowFt, 1) : null;
 const liveBandPct = band ? liveBandBelowFullPct(elev, band.fullPoolFt, band.deadPoolFt) : null;
 const change30d = changeOverSeries(reading?.series);
 const elevM = elev != null ? Math.round(elev * 0.3048 * 10000) / 10000 : null;
@@ -163,14 +164,19 @@ const feedNoun = feedLabel(reading?.feed) === 'CDEC' ? 'CDEC gage reading'
           <div class="row"><div class="k">Full pool ({fmtNum(band.fullPoolFt,0)} ft)</div><div class="vv">{feetBelowFull != null ? `${fmtNum(feetBelowFull,1)} ft below` : 'n/a'}</div></div>
           <div class="row"><div class="k">Minimum power pool ({fmtNum(band.minPowerPoolFt,0)} ft)</div><div class="vv">{aboveMinPower != null ? `${fmtNum(aboveMinPower,1)} ft above` : 'n/a'}</div></div>
           <div class="row"><div class="k">Dead pool ({fmtNum(band.deadPoolFt,0)} ft)</div><div class="vv">{aboveDead != null ? `${fmtNum(aboveDead,1)} ft above` : 'n/a'}</div></div>
-          <div class="row"><div class="k">Record low since first fill ({fmtNum(band.recordLowFt,2)} ft, 2023-04-13)</div><div class="vv">{aboveRecordLow != null ? `${fmtNum(aboveRecordLow,1)} ft above` : 'n/a'}</div></div>
+          {postFillLow && (
+            <div class="row">
+              <div class="k">Lowest since the reservoir first filled ({fmtNum(postFillLow.postFillLowFt,2)} ft, {fmtRecordDate(postFillLow.postFillLowDate)})</div>
+              <div class="vv">{postFillLow.latestIsPostFillLow ? 'the latest Reclamation daily reading' : (vsPostFillLow ? vsPostFillLow.text : 'n/a')}</div>
+            </div>
+          )}
           <div class="row"><div class="k">Share of live-storage band below full</div><div class="vv">{liveBandPct != null ? `${fmtNum(liveBandPct,1)}%` : 'n/a'}</div></div>
         </div>
         <p style="font-size:14px;color:var(--t2);max-width:660px;margin-top:12px;">
           The band share is an elevation-distance fraction, not a storage-volume percentage. Reservoirs widen toward the top, so volume is not linear with elevation.
         </p>
         <p style="font-size:15px;color:var(--t1);max-width:660px;margin-top:12px;">
-          Wondering how deep the water actually is at the dam right now? <a href="/lake/lake-powell/depth/">How deep is Lake Powell right now?</a> computes it live from this same gage. If you are launching, check <a href="/lake/lake-powell/boat-ramps/">the minimum elevation each Lake Powell ramp needs</a> against this reading.
+          Wondering how deep the water actually is at the dam right now? <a href="/lake/lake-powell/depth/">How deep is Lake Powell right now?</a> computes it live from this same gage. If you are launching, check <a href="/lake/lake-powell/boat-ramps/">the minimum elevation each Lake Powell ramp needs</a> against this reading. To see where today sits against every daily reading since 1963, the <a href="/lake/lake-powell/chart/">Lake Powell water level chart</a> plots the whole Reclamation record.
         </p>
       </section>
     )}

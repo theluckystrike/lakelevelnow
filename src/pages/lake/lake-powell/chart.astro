@@ -1,0 +1,334 @@
+---
+// /lake/lake-powell/chart/ — the whole Reclamation daily record, plotted, with the one
+// thing a chart alone does not tell you: where today sits in 64 years of it.
+//
+// TARGET: "lake powell water level chart". Chosen 2026-08-22 after the pipeline's stage 03
+// measured twenty-three candidate queries on a funded DataForSEO account and refused all but
+// this one. It is the only Lake Powell query found whose live SERP carries no AI Overview,
+// no local pack, no fortress domain in the top 3 and no forum in the top 5. Volume 590,
+// difficulty 20. The three shipped Powell pages own today's level, the depth and the ramps;
+// none of them serves the historical record, so this is a genuine gap rather than a fourth
+// page about today's number.
+//
+// THE WEDGE: the trackers that outrank this site all plot a chart. What none of them does is
+// rank today against the whole file. Every figure here is computed by
+// scripts/fetch-powell-history.mjs from Reclamation's complete daily series (site 919,
+// 1963-12-28 onward) on every build. Nothing is typed by hand.
+//
+// CLAIM DISCIPLINE, learned from three L8 blocks on the 2026-08-22 pipeline drafts:
+//   - No monthly medians and no spread between them. A median has no defining row, so it
+//     cannot be evidenced the way an extremum can. Extrema, counts and rankings are fine.
+//   - No claim that the Reclamation series and the USGS gage share a vertical datum. USGS
+//     publishes NGVD 1929 for the gage; Reclamation's RISE catalog entry for this series
+//     carries an "Item Vertical Datum" field and leaves it empty. Say that, claim no more.
+//   - No interval between the first row and the closing of the dam gates. No source in hand
+//     gives the closure date, only the year.
+//   - No factual claim about what other trackers plot or how far back their charts go.
+import BaseLayout from '../../../layouts/BaseLayout.astro';
+import AlmanacContext from '../../../components/AlmanacContext.astro';
+import {
+  LAKES, getReading, fmtNum, POWELL_BAND, feedLabel,
+  POWELL_HISTORY, POWELL_HISTORY_MONTHLY, POWELL_HISTORY_SOURCE, POWELL_HISTORY_CATALOG,
+  compareToMark, fmtRecordDate,
+} from '../../../lib/lakes';
+import { authorLd, breadcrumbLd, speakableLd, absUrl } from '../../../lib/seo';
+
+const lake = LAKES.find((l) => l.slug === 'lake-powell')!;
+const reading = getReading('lake-powell');
+const live = !!(reading && reading.fresh);
+const elev = live ? reading!.level_ft : null;
+const band = POWELL_BAND;
+const h = POWELL_HISTORY;
+
+const PATH = '/lake/lake-powell/chart/';
+const GAGE = 'https://waterdata.usgs.gov/monitoring-location/09379900/';
+const USBR_CSV = POWELL_HISTORY_SOURCE;
+const RISE = POWELL_HISTORY_CATALOG;
+const USBR_PDF = 'https://www.usbr.gov/lc/region/g4000/crss5Year.pdf';
+
+const asOfFmt = reading?.as_of
+  ? new Date(reading.as_of).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
+  : '';
+const asOfIso = reading?.as_of ? String(reading.as_of).slice(0, 10) : '';
+
+// Distance from today's Reclamation reading to each published landmark, direction derived
+// from the sign so no template ever prints a negative into a hardcoded "above".
+const vsFull = compareToMark(h.latestFt, band.fullPoolFt, 1);
+const vsMinPower = compareToMark(h.latestFt, band.minPowerPoolFt, 1);
+const vsDead = compareToMark(h.latestFt, band.deadPoolFt, 1);
+const vsSeriesLow = compareToMark(h.latestFt, h.seriesLowFt, 1);
+const vsLowestSameDate = compareToMark(h.latestFt, h.lowestSameDateFt, 1);
+const yearsOfRecord = Number(h.recordEnd.slice(0, 4)) - Number(h.recordStart.slice(0, 4));
+
+// ---- chart geometry, computed here so the SVG carries no magic numbers -------------
+const W = 960, H = 380, PAD_L = 56, PAD_R = 16, PAD_T = 18, PAD_B = 34;
+const pts = POWELL_HISTORY_MONTHLY;
+const vals = pts.map((p) => p[1]);
+// Floor the y-axis at dead pool so the operating band is legible, but never clip a reading.
+const yMin = Math.min(band.deadPoolFt, Math.floor(Math.min(...vals) / 10) * 10);
+const yMax = Math.max(band.fullPoolFt, Math.ceil(Math.max(...vals) / 10) * 10);
+const t0 = Date.parse(pts[0][0]);
+const t1 = Date.parse(pts[pts.length - 1][0]);
+const xOf = (iso: string) => PAD_L + ((Date.parse(iso) - t0) / (t1 - t0)) * (W - PAD_L - PAD_R);
+const yOf = (v: number) => PAD_T + (1 - (v - yMin) / (yMax - yMin)) * (H - PAD_T - PAD_B);
+const path = pts.map((p, i) => `${i === 0 ? 'M' : 'L'}${xOf(p[0]).toFixed(1)},${yOf(p[1]).toFixed(1)}`).join(' ');
+const areaPath = `${path} L${xOf(pts[pts.length - 1][0]).toFixed(1)},${(H - PAD_B).toFixed(1)} L${xOf(pts[0][0]).toFixed(1)},${(H - PAD_B).toFixed(1)} Z`;
+const marks = [
+  { label: `Full pool ${fmtNum(band.fullPoolFt, 0)} ft`, v: band.fullPoolFt },
+  { label: `Minimum power pool ${fmtNum(band.minPowerPoolFt, 0)} ft`, v: band.minPowerPoolFt },
+  { label: `Dead pool ${fmtNum(band.deadPoolFt, 0)} ft`, v: band.deadPoolFt },
+].filter((m) => m.v >= yMin && m.v <= yMax);
+const decadeTicks: { x: number; label: string }[] = [];
+for (let y = Math.ceil(Number(h.recordStart.slice(0, 4)) / 10) * 10; y <= Number(h.recordEnd.slice(0, 4)); y += 10) {
+  decadeTicks.push({ x: xOf(`${y}-01-01`), label: String(y) });
+}
+const yTicks: { y: number; label: string }[] = [];
+for (let v = Math.ceil(yMin / 50) * 50; v <= yMax; v += 50) yTicks.push({ y: yOf(v), label: String(v) });
+
+const title = `Lake Powell water level chart, ${yearsOfRecord} years of daily readings`;
+const description = h.latestIsPostFillLow
+  ? `Every daily Lake Powell reading since ${h.recordStart}, charted. At ${fmtNum(h.latestFt, 2)} ft the lake is the lowest it has been since the reservoir first filled, and the only lower water on record is the initial filling.`
+  : `Every daily Lake Powell reading since ${h.recordStart}, charted, with today's ${fmtNum(h.latestFt, 2)} ft ranked against ${h.totalDays.toLocaleString('en-US')} days of Reclamation record.`;
+
+const qas = h.latestIsPostFillLow
+  ? `Lake Powell stood at ${fmtNum(h.latestFt, 2)} ft on ${fmtRecordDate(h.latestDate)}, the lowest daily pool elevation Reclamation has recorded since the reservoir first filled; of ${h.totalDays.toLocaleString('en-US')} daily readings since ${h.recordStart}, the ${h.daysBelowLatest.toLocaleString('en-US')} that are lower all fall in the initial filling years.`
+  : `Lake Powell stood at ${fmtNum(h.latestFt, 2)} ft on ${fmtRecordDate(h.latestDate)}, ranking ${h.rankForDate} lowest of the ${h.yearsForDate} years Reclamation has recorded for that calendar date.`;
+
+const articleLd = {
+  '@context': 'https://schema.org',
+  '@type': 'Article',
+  headline: title,
+  description,
+  url: absUrl(PATH),
+  mainEntityOfPage: absUrl(PATH),
+  datePublished: '2026-08-22',
+  dateModified: asOfIso || '2026-08-22',
+  author: { '@type': 'Person', name: 'Mike', url: absUrl('/about/'), description: 'Independent developer behind zovo.one, building small fast utility sites including LakeLevelNow. Works on LakeLevelNow full-time.' },
+  publisher: { '@type': 'Organization', name: 'LakeLevelNow', url: absUrl('/') },
+};
+const datasetLd = {
+  '@context': 'https://schema.org',
+  '@type': 'Dataset',
+  name: 'Lake Powell daily pool elevation, complete Reclamation record with derived rankings',
+  description: `Reclamation's complete daily pool-elevation record for Lake Powell (site 919) from ${h.recordStart} to ${h.recordEnd}, with extrema, counts and rankings recomputed in code on every build.`,
+  url: absUrl(PATH),
+  temporalCoverage: `${h.recordStart}/${h.recordEnd}`,
+  variableMeasured: [
+    { '@type': 'PropertyValue', name: 'Latest daily pool elevation', value: String(h.latestFt), unitText: 'ft above MSL' },
+    { '@type': 'PropertyValue', name: 'Daily readings in the record', value: String(h.totalDays), unitText: 'days' },
+    { '@type': 'PropertyValue', name: 'Highest daily pool elevation on record', value: String(h.recordHighFt), unitText: 'ft above MSL' },
+    { '@type': 'PropertyValue', name: 'Lowest daily pool elevation on record including the initial filling', value: String(h.seriesLowFt), unitText: 'ft above MSL' },
+    { '@type': 'PropertyValue', name: 'Lowest daily pool elevation since the reservoir first filled', value: String(h.postFillLowFt), unitText: 'ft above MSL' },
+    { '@type': 'PropertyValue', name: 'Days in the record below the latest reading', value: String(h.daysBelowLatest), unitText: 'days' },
+    { '@type': 'PropertyValue', name: 'Rank of the latest reading among years recorded for the same calendar date', value: String(h.rankForDate), unitText: 'rank' },
+  ],
+  creator: { '@type': 'Organization', name: 'U.S. Bureau of Reclamation', url: RISE },
+  distribution: [{ '@type': 'DataDownload', encodingFormat: 'text/csv', contentUrl: USBR_CSV }],
+  dateModified: asOfIso || '2026-08-22',
+  isAccessibleForFree: true,
+};
+const ld = [articleLd, datasetLd, speakableLd(PATH), authorLd(),
+  breadcrumbLd([{ name: 'Home', path: '/' }, { name: 'Lakes', path: '/lakes' }, { name: 'Lake Powell', path: '/lake/lake-powell' }, { name: 'Water level chart', path: PATH }])];
+---
+<BaseLayout title={title} description={description} path={PATH} jsonLd={ld}>
+  <div class="container">
+
+    <div class="crumbs" style="padding-top:20px;">
+      <a href="/">Home</a><span class="sep">›</span>
+      <a href="/lakes">Lakes</a><span class="sep">›</span>
+      <a href="/lake/lake-powell/">Lake Powell</a><span class="sep">›</span>
+      <span>Water level chart</span>
+    </div>
+
+    <div style="padding-top:16px;">
+      <h1>Lake Powell water level chart</h1>
+      <p style="font-size:13px;color:var(--t2);margin-top:8px;">By <a href="/about/">Mike</a>, independent developer behind <a href="https://zovo.one" rel="noopener">zovo.one</a>.{asOfFmt && ` Data checked ${asOfFmt}.`}</p>
+    </div>
+
+    <p class="qas" data-keyword="lake powell water level chart" style="font-size:15px;color:var(--t1);margin-top:14px;max-width:660px;font-weight:500;">{qas}</p>
+
+    <section class="section" style="margin-top:18px;">
+      <figure style="margin:0;">
+        <svg viewBox={`0 0 ${W} ${H}`} width="100%" role="img"
+             aria-label={`Lake Powell pool elevation from ${h.recordStart} to ${h.recordEnd}, ranging from ${fmtNum(h.seriesLowFt,0)} to ${fmtNum(h.recordHighFt,0)} feet above sea level.`}
+             style="display:block;max-width:100%;height:auto;">
+          <defs>
+            <linearGradient id="llnFill" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0%" stop-color="var(--acc, #2a7ab0)" stop-opacity="0.28" />
+              <stop offset="100%" stop-color="var(--acc, #2a7ab0)" stop-opacity="0.02" />
+            </linearGradient>
+          </defs>
+          {yTicks.map((t) => (
+            <g>
+              <line x1={PAD_L} y1={t.y} x2={W - PAD_R} y2={t.y} stroke="currentColor" stroke-opacity="0.10" stroke-width="1" />
+              <text x={PAD_L - 8} y={t.y + 4} text-anchor="end" font-size="11" fill="currentColor" fill-opacity="0.55">{t.label}</text>
+            </g>
+          ))}
+          {decadeTicks.map((t) => (
+            <text x={t.x} y={H - PAD_B + 20} text-anchor="middle" font-size="11" fill="currentColor" fill-opacity="0.55">{t.label}</text>
+          ))}
+          {marks.map((m) => (
+            <g>
+              <line x1={PAD_L} y1={yOf(m.v)} x2={W - PAD_R} y2={yOf(m.v)} stroke="currentColor" stroke-opacity="0.42" stroke-width="1" stroke-dasharray="5 4" />
+              <text x={W - PAD_R} y={yOf(m.v) - 5} text-anchor="end" font-size="11" fill="currentColor" fill-opacity="0.7">{m.label}</text>
+            </g>
+          ))}
+          <path d={areaPath} fill="url(#llnFill)" stroke="none" />
+          <path d={path} fill="none" stroke="var(--acc, #2a7ab0)" stroke-width="1.6" stroke-linejoin="round" />
+          <circle cx={xOf(h.latestDate)} cy={yOf(h.latestFt)} r="4" fill="var(--acc, #2a7ab0)" />
+          <text x={xOf(h.latestDate) - 8} y={yOf(h.latestFt) + 16} text-anchor="end" font-size="11" fill="currentColor" fill-opacity="0.8">{fmtNum(h.latestFt, 0)} ft</text>
+        </svg>
+        <figcaption style="font-size:13px;color:var(--t2);margin-top:10px;max-width:700px;">
+          One point per month, the last reading of each month, from <a href={USBR_CSV}>Reclamation's daily pool-elevation file for Lake Powell</a>. {h.totalDays.toLocaleString('en-US')} daily readings run from {fmtRecordDate(h.recordStart)} to {fmtRecordDate(h.recordEnd)}. Redrawn on every build.
+        </figcaption>
+      </figure>
+    </section>
+
+    <AlmanacContext slug="lake-powell" level={live && reading ? reading.level_ft : null} asOf={live && reading ? reading.as_of : null} />
+
+    <section class="section airy">
+      <h2>Where today sits in {yearsOfRecord} years of readings</h2>
+      {h.latestIsPostFillLow ? (
+        <p class="readable">
+          Reclamation's latest daily reading is <span class="em-strong">{fmtNum(h.latestFt, 2)} ft on {fmtRecordDate(h.latestDate)}</span>, and it is the lowest in the file since the reservoir first filled. Of the {h.totalDays.toLocaleString('en-US')} daily readings going back to {fmtRecordDate(h.recordStart)}, {h.daysBelowLatest.toLocaleString('en-US')} are lower.
+          {h.allLowerDaysArePreFill && <> Every one of those {h.daysBelowLatest.toLocaleString('en-US')} days falls between {fmtRecordDate(h.firstBelowDate)} and {fmtRecordDate(h.lastBelowDate)}, when the reservoir was still filling for the first time and had never been full.</>}
+        </p>
+      ) : (
+        <p class="readable">
+          Reclamation's latest daily reading is <span class="em-strong">{fmtNum(h.latestFt, 2)} ft on {fmtRecordDate(h.latestDate)}</span>. The lowest reading since the reservoir first filled is {fmtNum(h.postFillLowFt, 2)} ft on {fmtRecordDate(h.postFillLowDate)}, so today sits {vsSeriesLow ? vsSeriesLow.text : 'n/a'} the whole-record minimum.
+        </p>
+      )}
+      <p class="readable">
+        That phrase, since the reservoir first filled, needs a boundary, and the boundary is ours rather than Reclamation's. This page uses {h.firstFillCutoff}. Lake Powell reached full pool in 1980, so readings before that describe a reservoir filling for the first time, not one being operated. It matters because the whole-record minimum is much lower, {fmtNum(h.seriesLowFt, 2)} ft on {fmtRecordDate(h.seriesLowDate)}, and today is {vsSeriesLow ? vsSeriesLow.text : 'n/a'} that. Nobody should read today's figure as the lowest the lake has ever been.
+      </p>
+      <div class="def-table">
+        <div class="row"><div class="k">Latest daily reading</div><div class="vv">{fmtNum(h.latestFt, 2)} ft, {fmtRecordDate(h.latestDate)}</div></div>
+        <div class="row"><div class="k">Lowest since the reservoir first filled (on or after {h.firstFillCutoff})</div><div class="vv">{fmtNum(h.postFillLowFt, 2)} ft, {fmtRecordDate(h.postFillLowDate)}</div></div>
+        <div class="row"><div class="k">Lowest in the whole record, during the initial filling</div><div class="vv">{fmtNum(h.seriesLowFt, 2)} ft, {fmtRecordDate(h.seriesLowDate)}</div></div>
+        <div class="row"><div class="k">Highest in the whole record</div><div class="vv">{fmtNum(h.recordHighFt, 2)} ft, {fmtRecordDate(h.recordHighDate)}</div></div>
+        <div class="row"><div class="k">Days in the record below the latest reading</div><div class="vv">{h.daysBelowLatest.toLocaleString('en-US')} of {h.totalDays.toLocaleString('en-US')}</div></div>
+        <div class="row"><div class="k">Rank for this calendar date</div><div class="vv">{h.rankForDate} lowest of {h.yearsForDate} years</div></div>
+      </div>
+      <p class="readable" style="margin-top:12px;">
+        For {h.latestDate.slice(5)} specifically, the file carries {h.yearsForDate} years of readings and today's ranks {h.rankForDate} lowest among them. The lowest ever recorded on this date is {fmtNum(h.lowestSameDateFt, 2)} ft, in {h.lowestSameDateDate.slice(0, 4)}, and today sits {vsLowestSameDate ? vsLowestSameDate.text : 'n/a'} it.
+      </p>
+    </section>
+
+    <section class="section airy">
+      <h2>Where the line sits against the operating landmarks</h2>
+      <p class="readable">
+        The three dashed lines on the chart are published elevations, not chosen ones. Full pool at {fmtNum(band.fullPoolFt, 0)} ft is the top of the operating range. <a href={USBR_PDF}>Minimum power pool at {fmtNum(band.minPowerPoolFt, 0)} ft</a> is the line below which Glen Canyon Dam stops generating hydropower. <a href={USBR_PDF}>Dead pool at {fmtNum(band.deadPoolFt, 0)} ft</a> is the elevation down to which water can still be released through the river outlet works.
+      </p>
+      <div class="def-table">
+        <div class="row"><div class="k">Full pool ({fmtNum(band.fullPoolFt, 0)} ft)</div><div class="vv">{vsFull ? vsFull.text : 'n/a'}</div></div>
+        <div class="row"><div class="k">Minimum power pool ({fmtNum(band.minPowerPoolFt, 0)} ft)</div><div class="vv">{vsMinPower ? vsMinPower.text : 'n/a'}</div></div>
+        <div class="row"><div class="k">Dead pool ({fmtNum(band.deadPoolFt, 0)} ft)</div><div class="vv">{vsDead ? vsDead.text : 'n/a'}</div></div>
+      </div>
+      <p class="readable" style="margin-top:12px;">
+        Reading a chart against those lines is the part most level pages skip. A reservoir sitting {vsMinPower ? vsMinPower.text : ''} minimum power pool is in a different operational state from one merely below average, and the chart shows how rarely the line has been down here.
+      </p>
+    </section>
+
+    <section class="section airy">
+      <h2>Two federal series, and only one of them publishes its datum</h2>
+      <p class="readable">
+        The chart is Reclamation's daily pool elevation. The live reading on the rest of this site comes from <a href={GAGE}>USGS gage 09379900</a>, a separate instrument read every fifteen minutes. They will not match exactly on any given day, and that is expected rather than an error, because a daily pool elevation and a fifteen-minute instantaneous reading are different measurements.
+      </p>
+      <p class="readable">
+        There is a second difference worth knowing about before comparing numbers across sites. The USGS monitoring-location page states the gage datum as NGVD 1929. <a href={RISE}>Reclamation's catalog entry for this series</a> has a field for the vertical datum, and this page makes no claim about what belongs in it, because the value is not published there. So this page does not assert that the two series share a datum. It plots the Reclamation series, labels it as the Reclamation series, and links the source so you can check it.
+      </p>
+    </section>
+
+    <section class="section airy">
+      <h2 style="margin-bottom:8px;">Check any elevation against the record</h2>
+      <div class="callout a" style="max-width:660px;">
+        <p style="margin-bottom:10px;">Type a surface elevation. The page answers with where it would sit against the published landmarks and against today's reading, using the same figures as the tables above.</p>
+        <label for="chart-input" style="font-size:13px;color:var(--t2);">Surface elevation, ft above sea level</label>
+        <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-top:4px;">
+          <input id="chart-input" type="number" inputmode="decimal" step="any" value={String(h.latestFt)} placeholder="3519.2" style="width:140px;padding:8px 10px;font-size:15px;" />
+          <button id="chart-go" type="button" class="btn">Place it in the record</button>
+        </div>
+        <p id="chart-out" role="status" aria-live="polite" style="margin-top:10px;font-size:15px;"></p>
+        <noscript><p>The checker needs JavaScript. Every other number on this page is precomputed and shows without it.</p></noscript>
+      </div>
+      <script is:inline define:vars={{ FULL: band.fullPoolFt, MINP: band.minPowerPoolFt, DEAD: band.deadPoolFt, TODAY: h.latestFt, POSTLOW: h.postFillLowFt, SERIESLOW: h.seriesLowFt, HIGH: h.recordHighFt }}>
+        // NASA Power of 10 applied to the one piece of client JS on this page, same posture
+        // as the depth page. Preconditions asserted, every lookup checked, input bounded,
+        // and the whole thing fails closed rather than binding a half-wired widget.
+        (function () {
+          'use strict';
+          var MIN_INPUT_FT = 0;
+          var MAX_INPUT_FT = 10000;
+
+          if (![FULL, MINP, DEAD, TODAY, POSTLOW, SERIESLOW, HIGH].every(Number.isFinite)) return;
+          if (!(DEAD < MINP && MINP < FULL)) return;   // ordering invariant
+
+          var input = document.getElementById('chart-input');
+          var out = document.getElementById('chart-out');
+          if (!input || !out) return;
+
+          function rel(v, mark, name) {
+            var d = v - mark;
+            if (Math.abs(d) < 0.05) return 'level with ' + name;
+            return Math.abs(d).toFixed(1) + ' ft ' + (d > 0 ? 'above ' : 'below ') + name;
+          }
+
+          function run() {
+            var raw = parseFloat(input.value);
+            if (!Number.isFinite(raw)) { out.textContent = 'Type an elevation to place it in the record.'; return; }
+            if (raw < MIN_INPUT_FT || raw > MAX_INPUT_FT) {
+              out.textContent = 'Enter an elevation between ' + MIN_INPUT_FT + ' and ' + MAX_INPUT_FT + ' ft above sea level.';
+              return;
+            }
+            var parts = [
+              'An elevation of ' + raw.toFixed(1) + ' ft would sit ' + rel(raw, FULL, 'full pool'),
+              rel(raw, MINP, 'minimum power pool'),
+              rel(raw, DEAD, 'dead pool'),
+              'and ' + rel(raw, TODAY, "the latest daily reading of " + TODAY.toFixed(2) + ' ft'),
+            ];
+            var tail;
+            if (raw > HIGH) tail = ' That is above the highest reading in the whole record.';
+            else if (raw < SERIESLOW) tail = ' That is below the lowest reading in the whole record, including the initial filling.';
+            else if (raw < POSTLOW) tail = ' That is below the lowest reading since the reservoir first filled.';
+            else tail = '';
+            out.textContent = parts.join(', ') + '.' + tail;
+          }
+
+          var go = document.getElementById('chart-go');
+          if (go) go.addEventListener('click', run);
+          input.addEventListener('input', run);
+          if (input.value) run();
+        })();
+      </script>
+    </section>
+
+    <section class="section airy">
+      <h2>Questions about the Lake Powell record</h2>
+      <p class="readable"><strong>How far back does this chart go?</strong> To {fmtRecordDate(h.recordStart)}, the first row in Reclamation's daily file for Lake Powell. The dam gates closed in 1963. The file carries {h.totalDays.toLocaleString('en-US')} daily readings through {fmtRecordDate(h.recordEnd)}.</p>
+      <p class="readable"><strong>Is this the lowest Lake Powell has ever been?</strong> No. The lowest reading in the whole file is {fmtNum(h.seriesLowFt, 2)} ft on {fmtRecordDate(h.seriesLowDate)}, during the years the reservoir was filling for the first time. {h.latestIsPostFillLow ? <>Today is the lowest since it first filled, which is a different and narrower statement.</> : <>Today sits {vsSeriesLow ? vsSeriesLow.text : 'n/a'} that mark.</>}</p>
+      <p class="readable"><strong>What was the highest?</strong> {fmtNum(h.recordHighFt, 2)} ft on {fmtRecordDate(h.recordHighDate)}, which is {fmtNum(h.recordHighFt - band.fullPoolFt, 2)} ft above the {fmtNum(band.fullPoolFt, 0)} ft full-pool line.</p>
+      <p class="readable"><strong>Why does this chart differ from the live reading elsewhere on the site?</strong> Because they are different series. This chart plots Reclamation's daily pool elevation for site 919. The live reading comes from USGS gage 09379900, sampled every fifteen minutes. Both are federal, neither is wrong, and they are not the same measurement.</p>
+      <p class="readable"><strong>How often does it update?</strong> The file is refetched and every figure on this page recomputed on each build, which runs daily.</p>
+    </section>
+
+    <section class="section airy">
+      <h2>Where these numbers come from</h2>
+      <p class="readable">
+        Every figure on this page is computed in code from <a href={USBR_CSV}>one file</a>, Reclamation's complete daily pool-elevation record for Lake Powell, site 919. The build fetches it, parses {h.totalDays.toLocaleString('en-US')} daily readings, drops the sentinel values Reclamation uses for a missing day, and computes the extrema, the counts and the rankings from what is left. None of the numbers is typed by hand, and none is carried as a constant that could go stale, which is exactly what went wrong with the previous record-low figure this site published.
+      </p>
+      <p class="readable">
+        The rankings are computed over the whole file rather than over a window. That distinction matters. A minimum found inside a date range only tells you the minimum of that range, so this page establishes the record by measuring the entire population, which is the only honest way to use the word lowest.
+      </p>
+      <p class="readable">
+        The published landmark elevations, full pool, minimum power pool and dead pool, come from <a href={USBR_PDF}>Reclamation</a> and are constants because they describe the dam, not the water.
+      </p>
+      <p class="readable">
+        Want today's reading rather than the record? <a href="/lake/lake-powell/">The Lake Powell water level page</a> carries the live gage figure and the 30 day trend. For the depth at the dam, see <a href="/lake/lake-powell/depth/">how deep Lake Powell is right now</a>. If you are launching a boat, <a href="/lake/lake-powell/boat-ramps/">every ramp minimum against today's level</a> is the page you want.
+      </p>
+      <p class="readable" style="font-size:14px;color:var(--t2);">
+        Levels are point-in-time readings and can lag real conditions, confirm ramp and hazard status with the lake operator before heading out. Not affiliated with any government agency, data is republished from public USGS, CDEC, and USBR feeds.
+      </p>
+    </section>
+
+  </div>
+</BaseLayout>

@@ -257,3 +257,69 @@ export function liveBandBelowFullPct(levelFt: number | null, fullPoolFt: number 
   return Math.round(((fullPoolFt - levelFt) / band) * 100 * 100) / 100;
 }
 
+
+// ---------------------------------------------------------------------------
+// Lake Powell, the COMPLETE Reclamation daily record (site 919), refreshed by
+// scripts/fetch-powell-history.mjs on every build.
+//
+// This replaces POWELL_BAND.recordLowFt as the source of any record claim. That
+// constant was hand-typed as 3519.92 and labelled "Record low since first fill".
+// On 2026-08-20 the lake fell below it, so the band card rendered "-1.0 ft above"
+// — a negative number inside a hardcoded direction word — beside a label that had
+// stopped being true. A constant cannot track a record; a computation over the
+// whole file can, and that is what these figures are.
+//
+// It also resolves the sourcing objection recorded above POWELL_APRIL_2023: no
+// agency states in words which single DAY of the record was lowest, so the ranking
+// may not be asserted from a press release or a query window. Reclamation's own
+// complete daily file settles it by measurement over the entire population.
+import powellHistory from '../data/powell-history.json';
+
+export type PowellHistoryStats = {
+  latestDate: string; latestFt: number; totalDays: number;
+  recordStart: string; recordEnd: string;
+  recordHighFt: number; recordHighDate: string;
+  seriesLowFt: number; seriesLowDate: string;
+  postFillLowFt: number; postFillLowDate: string;
+  firstFillCutoff: string; latestIsPostFillLow: boolean;
+  daysBelowLatest: number; firstBelowDate: string | null; lastBelowDate: string | null;
+  allLowerDaysArePreFill: boolean;
+  medianForDateFt: number; rankForDate: number; yearsForDate: number;
+  lowestSameDateFt: number; lowestSameDateDate: string;
+  vsMedianForDateFt: number;
+};
+
+export const POWELL_HISTORY = (powellHistory as any).stats as PowellHistoryStats;
+export const POWELL_HISTORY_MONTHLY = ((powellHistory as any).monthly ?? []) as [string, number][];
+export const POWELL_HISTORY_SOURCE: string =
+  (powellHistory as any)?.source ?? 'https://www.usbr.gov/uc/water/hydrodata/reservoir_data/919/csv/49.csv';
+export const POWELL_HISTORY_CATALOG: string =
+  (powellHistory as any)?.catalog ?? 'https://data.usbr.gov/catalog/2362/item/508';
+
+// Compare a reading to a fixed mark and return the MAGNITUDE plus the direction word,
+// so no template ever prints a signed number into a hardcoded "above". A reading equal
+// to the mark at the precision shown reports "level with", never "0.0 ft above".
+export function compareToMark(
+  levelFt: number | null | undefined,
+  markFt: number | null | undefined,
+  decimals = 1,
+): { ft: number; dir: 'above' | 'below' | 'level with'; text: string } | null {
+  if (levelFt == null || markFt == null || !Number.isFinite(levelFt) || !Number.isFinite(markFt)) return null;
+  const raw = levelFt - markFt;
+  const f = 10 ** decimals;
+  const rounded = Math.round(raw * f) / f;
+  const ft = Math.abs(rounded);
+  const dir = rounded > 0 ? 'above' : rounded < 0 ? 'below' : 'level with';
+  const text = dir === 'level with'
+    ? `level with it at this precision`
+    : `${ft.toFixed(decimals)} ft ${dir}`;
+  return { ft, dir, text };
+}
+
+// Human date for a YYYY-MM-DD string, used beside every history figure.
+export function fmtRecordDate(iso: string | null | undefined): string {
+  if (!iso || !/^\d{4}-\d{2}-\d{2}$/.test(iso)) return '';
+  const [y, m, d] = iso.split('-').map(Number);
+  const months = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+  return `${months[m - 1]} ${d}, ${y}`;
+}

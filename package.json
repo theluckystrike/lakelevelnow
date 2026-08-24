@@ -9,7 +9,7 @@
   },
   "scripts": {
     "dev": "astro dev",
-    "fetch": "node scripts/fetch-levels.mjs && node scripts/fetch-powell-ramps.mjs && node scripts/fetch-powell-history.mjs",
+    "fetch": "node scripts/fetch-levels.mjs && node scripts/fetch-powell-ramps.mjs && node scripts/fetch-lake-history.mjs",
     "build": "astro build",
     "preview": "astro preview",
     "astro": "astro",

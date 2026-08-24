@@ -30,14 +30,38 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
-const OUT = path.join(ROOT, 'src', 'data', 'powell-history.json');
-const SOURCE = 'https://www.usbr.gov/uc/water/hydrodata/reservoir_data/919/csv/49.csv';
-const CATALOG = 'https://data.usbr.gov/catalog/2362/item/508';
+
+// One entry per lake with a complete Reclamation daily pool-elevation file. Adding a lake here
+// is the whole job: the fetch, the parse, the statistics and the encoded series all follow.
+//
+// firstFillCutoff is OURS, not Reclamation's, and every figure derived from it is published next
+// to it. It marks the point after which the reservoir was being operated rather than filled for
+// the first time, because the filling years reach far lower than any modern drawdown and are not
+// a comparable state. Powell reached full pool in 1980; Mead first passed 1,220 ft on 1941-07-24,
+// verified in the file itself.
+const LAKES = [
+  {
+    slug: 'powell',
+    name: 'Lake Powell',
+    site: '919',
+    out: 'powell-history.json',
+    catalog: 'https://data.usbr.gov/catalog/2362/item/508',
+    firstFillCutoff: '1981-01-01',
+  },
+  {
+    slug: 'mead',
+    name: 'Lake Mead',
+    site: '921',
+    out: 'mead-history.json',
+    catalog: 'https://data.usbr.gov/catalog/2362/item/508',
+    firstFillCutoff: '1942-01-01',
+  },
+];
+const srcOf = (site) => `https://www.usbr.gov/uc/water/hydrodata/reservoir_data/${site}/csv/49.csv`;
 const TIMEOUT_MS = 30000;
 const RETRIES = 3;
 const MAX_ROWS = 40000;        // bounded; the real file is ~22,900 rows
 const MIN_ROWS = 1000;         // a truncated file is not a series
-const FIRST_FILL_CUTOFF = '1981-01-01';
 const UA = 'lakelevelnow/1.0 (+https://lakelevelnow.com)';
 
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
@@ -80,7 +104,7 @@ function parseSeries(txt) {
   return out;
 }
 
-function computeStats(series) {
+function computeStats(series, FIRST_FILL_CUTOFF) {
   const latest = series[series.length - 1];
   let seriesLow = series[0];
   let recordHigh = series[0];
@@ -159,12 +183,33 @@ function computeStats(series) {
   const troughMonth = topOf(loMonths);
   const runnerUpTrough = secondLoOf();
 
+  // How CONCENTRATED the annual cycle is, not merely which month wins. Powell is snowmelt-driven
+  // and its high lands in one month nearly half the time. Mead sits below Hoover Dam and is
+  // governed by release schedules, so its annual high is scattered across February, December and
+  // July with no month taking more than about a quarter of the years. Reporting only the winning
+  // month would imply a rhythm Mead does not have, so the share is carried alongside it and the
+  // page is required to state which case it is looking at.
+  const share = (c) => (completeYears > 0 ? Math.round((c / completeYears) * 1000) / 10 : null);
+  const top3 = (arr) => arr
+    .map((c, i) => ({ month: MONTHS[i], count: c }))
+    .filter((x) => x.count > 0)
+    .sort((a, b) => b.count - a.count)
+    .slice(0, 3);
+
   return {
     completeYears,
     peakMonth: peakMonth.month, peakMonthCount: peakMonth.count,
     troughMonth: troughMonth.month, troughMonthCount: troughMonth.count,
     runnerUpTroughMonth: runnerUpTrough ? runnerUpTrough.month : null,
     runnerUpTroughCount: runnerUpTrough ? runnerUpTrough.count : null,
+    peakMonthShare: share(peakMonth.count),
+    troughMonthShare: share(troughMonth.count),
+    peakTop3: top3(hiMonths),
+    troughTop3: top3(loMonths),
+    // A pronounced cycle is one where a single month carries the annual extreme in at least
+    // 40 percent of complete years. Below that the page says the rhythm is weak and shows the
+    // spread instead of naming a season.
+    seasonalIsPronounced: share(peakMonth.count) !== null && share(peakMonth.count) >= 40,
     latestDate: latest.d,
     latestFt: r2(latest.v),
     totalDays: series.length,
@@ -194,22 +239,24 @@ function computeStats(series) {
   };
 }
 
-async function main() {
+async function oneLake(lake) {
+  const SOURCE = srcOf(lake.site);
+  const OUT = path.join(ROOT, 'src', 'data', lake.out);
   let txt;
   try {
     txt = await httpGet(SOURCE);
   } catch (e) {
-    console.error(`Powell history: fetch failed (${e && e.message ? e.message : e}); keeping the previous file.`);
+    console.error(`${lake.name} history: fetch failed (${e && e.message ? e.message : e}); keeping the previous file.`);
     return;
   }
 
   const series = parseSeries(txt);
   if (series.length < MIN_ROWS) {
-    console.error(`Powell history: only ${series.length} usable rows (< ${MIN_ROWS}); keeping the previous file.`);
+    console.error(`${lake.name} history: only ${series.length} usable rows (< ${MIN_ROWS}); keeping the previous file.`);
     return;
   }
 
-  const stats = computeStats(series);
+  const stats = computeStats(series, lake.firstFillCutoff);
 
   // The chart plots one point per month (the month's last reading) so the payload stays
   // small enough to ship inline, while still showing every year of the record.
@@ -246,8 +293,10 @@ async function main() {
   }
 
   const payload = {
+    lake: lake.name,
+    slug: lake.slug,
     source: SOURCE,
-    catalog: CATALOG,
+    catalog: lake.catalog,
     as_of: new Date().toISOString(),
     stats,
     monthly: monthly.map((r) => [r.d, Math.round(r.v * 100) / 100]),
@@ -263,14 +312,23 @@ async function main() {
 
   await writeFile(OUT, `${JSON.stringify(payload, null, 2)}\n`);
   console.log(
-    `Powell history: ${series.length} daily rows ${stats.recordStart}..${stats.recordEnd}, `
+    `${lake.name} history: ${series.length} daily rows ${stats.recordStart}..${stats.recordEnd}, `
     + `latest ${stats.latestFt} ft, post-fill low ${stats.postFillLowFt} ft on ${stats.postFillLowDate}`
     + `${stats.latestIsPostFillLow ? ' (latest IS the post-fill low)' : ''}, `
-    + `${monthly.length} monthly points -> src/data/powell-history.json${changed ? ' (changed)' : ' (unchanged)'}`,
+    + `${monthly.length} monthly points -> src/data/${lake.out}${changed ? ' (changed)' : ' (unchanged)'}`,
   );
 }
 
+async function main() {
+  for (let i = 0; i < LAKES.length; i += 1) {
+    // Sequential on purpose: two fetches of a ~500 KB federal file should not race, and a
+    // failure on one lake must not stop the others.
+    // eslint-disable-next-line no-await-in-loop
+    await oneLake(LAKES[i]);
+  }
+}
+
 main().catch((e) => {
-  console.error(`Powell history: unexpected error (${e && e.message ? e.message : e}); keeping the previous file.`);
+  console.error(`Lake history: unexpected error (${e && e.message ? e.message : e}); keeping the previous file.`);
   process.exit(0);
 });

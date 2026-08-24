@@ -2,17 +2,17 @@
 // /lake/lake-powell/chart/ — the whole Reclamation daily record, plotted, with the one
 // thing a chart alone does not tell you: where today sits in 64 years of it.
 //
-// TARGET: "lake powell water level chart". Chosen 2026-08-22 after the pipeline's stage 03
+// TARGET: "lake mead water level chart". Chosen 2026-08-22 after the pipeline's stage 03
 // measured twenty-three candidate queries on a funded DataForSEO account and refused all but
-// this one. It is the only Lake Powell query found whose live SERP carries no AI Overview,
+// this one. It is the only Lake Mead query found whose live SERP carries no AI Overview,
 // no local pack, no fortress domain in the top 3 and no forum in the top 5. Volume 590,
-// difficulty 20. The three shipped Powell pages own today's level, the depth and the ramps;
+// difficulty 20. The three shipped Mead pages own today's level, the depth and the ramps;
 // none of them serves the historical record, so this is a genuine gap rather than a fourth
 // page about today's number.
 //
 // THE WEDGE: the trackers that outrank this site all plot a chart. What none of them does is
 // rank today against the whole file. Every figure here is computed by
-// scripts/fetch-powell-history.mjs from Reclamation's complete daily series (site 919,
+// scripts/fetch-powell-history.mjs from Reclamation's complete daily series (site 921,
 // 1963-12-28 onward) on every build. Nothing is typed by hand.
 //
 // CLAIM DISCIPLINE, learned from three L8 blocks on the 2026-08-22 pipeline drafts:
@@ -28,23 +28,24 @@ import BaseLayout from '../../../layouts/BaseLayout.astro';
 import AlmanacContext from '../../../components/AlmanacContext.astro';
 import {
   LAKES, getReading, fmtNum, POWELL_BAND, feedLabel,
-  POWELL_HISTORY, POWELL_HISTORY_MONTHLY, POWELL_HISTORY_SOURCE, POWELL_HISTORY_CATALOG,
-  POWELL_HISTORY_DAILY, POWELL_HISTORY_DAILY_START,
+  MEAD_HISTORY, MEAD_HISTORY_MONTHLY, MEAD_HISTORY_SOURCE, MEAD_HISTORY_CATALOG,
+  MEAD_HISTORY_DAILY, MEAD_HISTORY_DAILY_START, MEAD_BAND, POWELL_HISTORY,
   compareToMark, fmtRecordDate,
 } from '../../../lib/lakes';
 import { authorLd, breadcrumbLd, speakableLd, absUrl } from '../../../lib/seo';
 
-const lake = LAKES.find((l) => l.slug === 'lake-powell')!;
-const reading = getReading('lake-powell');
+const lake = LAKES.find((l) => l.slug === 'lake-mead')!;
+const reading = getReading('lake-mead');
 const live = !!(reading && reading.fresh);
 const elev = live ? reading!.level_ft : null;
-const band = POWELL_BAND;
-const h = POWELL_HISTORY;
+const band = MEAD_BAND;
+const h = MEAD_HISTORY;
+const powell = POWELL_HISTORY;
 
-const PATH = '/lake/lake-powell/chart/';
-const GAGE = 'https://waterdata.usgs.gov/monitoring-location/09379900/';
-const USBR_CSV = POWELL_HISTORY_SOURCE;
-const RISE = POWELL_HISTORY_CATALOG;
+const PATH = '/lake/lake-mead/chart/';
+const LC = 'https://www.usbr.gov/lc/region/g4000/hourly/mead-elv.html';
+const USBR_CSV = MEAD_HISTORY_SOURCE;
+const RISE = MEAD_HISTORY_CATALOG;
 const USBR_PDF = 'https://www.usbr.gov/lc/region/g4000/crss5Year.pdf';
 
 const asOfFmt = reading?.as_of
@@ -63,7 +64,7 @@ const yearsOfRecord = Number(h.recordEnd.slice(0, 4)) - Number(h.recordStart.sli
 
 // ---- chart geometry, computed here so the SVG carries no magic numbers -------------
 const W = 960, H = 380, PAD_L = 56, PAD_R = 16, PAD_T = 18, PAD_B = 34;
-const pts = POWELL_HISTORY_MONTHLY;
+const pts = MEAD_HISTORY_MONTHLY;
 const vals = pts.map((p) => p[1]);
 // Floor the y-axis at dead pool so the operating band is legible, but never clip a reading.
 const yMin = Math.min(band.deadPoolFt, Math.floor(Math.min(...vals) / 10) * 10);
@@ -86,14 +87,14 @@ for (let y = Math.ceil(Number(h.recordStart.slice(0, 4)) / 10) * 10; y <= Number
 const yTicks: { y: number; label: string }[] = [];
 for (let v = Math.ceil(yMin / 50) * 50; v <= yMax; v += 50) yTicks.push({ y: yOf(v), label: String(v) });
 
-const title = `Lake Powell water level chart, ${yearsOfRecord} years of daily readings`;
+const title = `Lake Mead water level chart, ${yearsOfRecord} years of daily readings`;
 const description = h.latestIsPostFillLow
-  ? `Every daily Lake Powell reading since ${h.recordStart}, charted. At ${fmtNum(h.latestFt, 2)} ft the lake is the lowest it has been since the reservoir first filled, and the only lower water on record is the initial filling.`
-  : `Every daily Lake Powell reading since ${h.recordStart}, charted, with today's ${fmtNum(h.latestFt, 2)} ft ranked against ${h.totalDays.toLocaleString('en-US')} days of Reclamation record.`;
+  ? `Every daily Lake Mead reading since ${h.recordStart}, charted. At ${fmtNum(h.latestFt, 2)} ft the lake is the lowest it has been since the reservoir first filled, and the only lower water on record is the initial filling.`
+  : `Every daily Lake Mead reading since ${h.recordStart}, charted, with today's ${fmtNum(h.latestFt, 2)} ft ranked against ${h.totalDays.toLocaleString('en-US')} days of Reclamation record.`;
 
 const qas = h.latestIsPostFillLow
-  ? `Lake Powell stood at ${fmtNum(h.latestFt, 2)} ft on ${fmtRecordDate(h.latestDate)}, the lowest daily pool elevation Reclamation has recorded since the reservoir first filled; of ${h.totalDays.toLocaleString('en-US')} daily readings since ${h.recordStart}, the ${h.daysBelowLatest.toLocaleString('en-US')} that are lower all fall in the initial filling years.`
-  : `Lake Powell stood at ${fmtNum(h.latestFt, 2)} ft on ${fmtRecordDate(h.latestDate)}, ranking ${h.rankForDate} lowest of the ${h.yearsForDate} years Reclamation has recorded for that calendar date.`;
+  ? `Lake Mead stood at ${fmtNum(h.latestFt, 2)} ft on ${fmtRecordDate(h.latestDate)}, the lowest daily pool elevation Reclamation has recorded since the reservoir first filled; of ${h.totalDays.toLocaleString('en-US')} daily readings since ${h.recordStart}, the ${h.daysBelowLatest.toLocaleString('en-US')} that are lower all fall in the initial filling years.`
+  : `Lake Mead stood at ${fmtNum(h.latestFt, 2)} ft on ${fmtRecordDate(h.latestDate)}, ranking ${h.rankForDate} lowest of the ${h.yearsForDate} years Reclamation has recorded for that calendar date.`;
 
 const articleLd = {
   '@context': 'https://schema.org',
@@ -110,8 +111,8 @@ const articleLd = {
 const datasetLd = {
   '@context': 'https://schema.org',
   '@type': 'Dataset',
-  name: 'Lake Powell daily pool elevation, complete Reclamation record with derived rankings',
-  description: `Reclamation's complete daily pool-elevation record for Lake Powell (site 919) from ${h.recordStart} to ${h.recordEnd}, with extrema, counts and rankings recomputed in code on every build.`,
+  name: 'Lake Mead daily pool elevation, complete Reclamation record with derived rankings',
+  description: `Reclamation's complete daily pool-elevation record for Lake Mead (site 921) from ${h.recordStart} to ${h.recordEnd}, with extrema, counts and rankings recomputed in code on every build.`,
   url: absUrl(PATH),
   temporalCoverage: `${h.recordStart}/${h.recordEnd}`,
   variableMeasured: [
@@ -129,7 +130,7 @@ const datasetLd = {
   isAccessibleForFree: true,
 };
 const ld = [articleLd, datasetLd, speakableLd(PATH), authorLd(),
-  breadcrumbLd([{ name: 'Home', path: '/' }, { name: 'Lakes', path: '/lakes' }, { name: 'Lake Powell', path: '/lake/lake-powell' }, { name: 'Water level chart', path: PATH }])];
+  breadcrumbLd([{ name: 'Home', path: '/' }, { name: 'Lakes', path: '/lakes' }, { name: 'Lake Mead', path: '/lake/lake-powell' }, { name: 'Water level chart', path: PATH }])];
 ---
 <BaseLayout title={title} description={description} path={PATH} jsonLd={ld}>
   <div class="container">
@@ -137,21 +138,21 @@ const ld = [articleLd, datasetLd, speakableLd(PATH), authorLd(),
     <div class="crumbs" style="padding-top:20px;">
       <a href="/">Home</a><span class="sep">›</span>
       <a href="/lakes">Lakes</a><span class="sep">›</span>
-      <a href="/lake/lake-powell/">Lake Powell</a><span class="sep">›</span>
+      <a href="/lake/lake-powell/">Lake Mead</a><span class="sep">›</span>
       <span>Water level chart</span>
     </div>
 
     <div style="padding-top:16px;">
-      <h1>Lake Powell water level chart</h1>
+      <h1>Lake Mead water level chart</h1>
       <p style="font-size:13px;color:var(--t2);margin-top:8px;">By <a href="/about/">Mike</a>, independent developer behind <a href="https://zovo.one" rel="noopener">zovo.one</a>.{asOfFmt && ` Data checked ${asOfFmt}.`}</p>
     </div>
 
-    <p class="qas" data-keyword="lake powell water level chart" style="font-size:15px;color:var(--t1);margin-top:14px;max-width:660px;font-weight:500;">{qas}</p>
+    <p class="qas" data-keyword="lake mead water level chart" style="font-size:15px;color:var(--t1);margin-top:14px;max-width:660px;font-weight:500;">{qas}</p>
 
     <section class="section" style="margin-top:18px;">
       <figure style="margin:0;">
         <svg viewBox={`0 0 ${W} ${H}`} width="100%" role="img"
-             aria-label={`Lake Powell pool elevation from ${h.recordStart} to ${h.recordEnd}, ranging from ${fmtNum(h.seriesLowFt,0)} to ${fmtNum(h.recordHighFt,0)} feet above sea level.`}
+             aria-label={`Lake Mead pool elevation from ${h.recordStart} to ${h.recordEnd}, ranging from ${fmtNum(h.seriesLowFt,0)} to ${fmtNum(h.recordHighFt,0)} feet above sea level.`}
              style="display:block;max-width:100%;height:auto;">
           <defs>
             <linearGradient id="llnFill" x1="0" y1="0" x2="0" y2="1">
@@ -180,7 +181,7 @@ const ld = [articleLd, datasetLd, speakableLd(PATH), authorLd(),
           <text x={xOf(h.latestDate) - 8} y={yOf(h.latestFt) + 16} text-anchor="end" font-size="11" fill="currentColor" fill-opacity="0.8">{fmtNum(h.latestFt, 0)} ft</text>
         </svg>
         <figcaption style="font-size:13px;color:var(--t2);margin-top:10px;max-width:700px;">
-          One point per month, the last reading of each month, from <a href={USBR_CSV}>Reclamation's daily pool-elevation file for Lake Powell</a>. {h.totalDays.toLocaleString('en-US')} daily readings run from {fmtRecordDate(h.recordStart)} to {fmtRecordDate(h.recordEnd)}. Redrawn on every build.
+          One point per month, the last reading of each month, from <a href={USBR_CSV}>Reclamation's daily pool-elevation file for Lake Mead</a>. {h.totalDays.toLocaleString('en-US')} daily readings run from {fmtRecordDate(h.recordStart)} to {fmtRecordDate(h.recordEnd)}. Redrawn on every build.
         </figcaption>
       </figure>
     </section>
@@ -200,7 +201,7 @@ const ld = [articleLd, datasetLd, speakableLd(PATH), authorLd(),
         </p>
       )}
       <p class="readable">
-        That phrase, since the reservoir first filled, needs a boundary, and the boundary is ours rather than Reclamation's. This page uses {h.firstFillCutoff}. Lake Powell reached full pool in 1980, so readings before that describe a reservoir filling for the first time, not one being operated. It matters because the whole-record minimum is much lower, {fmtNum(h.seriesLowFt, 2)} ft on {fmtRecordDate(h.seriesLowDate)}, and today is {vsSeriesLow ? vsSeriesLow.text : 'n/a'} that. Nobody should read today's figure as the lowest the lake has ever been.
+        That phrase, since the reservoir first filled, needs a boundary, and the boundary is ours rather than Reclamation's. This page uses {h.firstFillCutoff}. Lake Mead reached full pool in 1980, so readings before that describe a reservoir filling for the first time, not one being operated. It matters because the whole-record minimum is much lower, {fmtNum(h.seriesLowFt, 2)} ft on {fmtRecordDate(h.seriesLowDate)}, and today is {vsSeriesLow ? vsSeriesLow.text : 'n/a'} that. Nobody should read today's figure as the lowest the lake has ever been.
       </p>
       <div class="def-table">
         <div class="row"><div class="k">Latest daily reading</div><div class="vv">{fmtNum(h.latestFt, 2)} ft, {fmtRecordDate(h.latestDate)}</div></div>
@@ -231,25 +232,28 @@ const ld = [articleLd, datasetLd, speakableLd(PATH), authorLd(),
     </section>
 
     <section class="section airy">
-      <h2>Two federal series, and only one of them publishes its datum</h2>
+      <h2>Two Reclamation series, and what neither of them states</h2>
       <p class="readable">
-        The chart is Reclamation's daily pool elevation. The live reading on the rest of this site comes from <a href={GAGE}>USGS gage 09379900</a>, a separate instrument read every fifteen minutes. They will not match exactly on any given day, and that is expected rather than an error, because a daily pool elevation and a fifteen-minute instantaneous reading are different measurements.
+        This chart plots Reclamation's daily pool elevation for Lake Mead, site 921. The live figure elsewhere on this site comes from Reclamation's <a href={LC}>Lower Colorado hourly report</a>, which publishes the end-of-period reading many times a day. Both are Reclamation, and they are still two different series: a daily value and an hourly one will differ by a tenth of a foot or so on any given day, which is a difference in sampling rather than a disagreement.
       </p>
       <p class="readable">
-        There is a second difference worth knowing about before comparing numbers across sites. The USGS monitoring-location page states the gage datum as NGVD 1929. <a href={RISE}>Reclamation's catalog entry for this series</a> has a field for the vertical datum, and this page makes no claim about what belongs in it, because the value is not published there. So this page does not assert that the two series share a datum. It plots the Reclamation series, labels it as the Reclamation series, and links the source so you can check it.
+        Worth knowing before you compare this number with one from somewhere else: <a href={RISE}>Reclamation's catalog entry for this series</a> carries a field for the vertical datum and this page makes no claim about what belongs in it, because no value is published there. Lake Mead elevations are conventionally quoted against a Reclamation datum rather than a national one, and sites that print a Mead figure rarely say which. So this page does not assert a datum. It plots the Reclamation series, labels it as the Reclamation series, and links the file so you can check any figure against the source.
       </p>
     </section>
 
     <section class="section airy">
-      <h2>The seasonal shape of an ordinary Powell year</h2>
+      <h2>Mead does not have much of a season, and that is the point</h2>
       <p class="readable">
-        A chart of the last twelve months will mislead you, because Powell runs a strong annual rhythm underneath whatever the long trend is doing. Snowmelt fills it through spring and early summer, then releases and evaporation draw it down through autumn.
+        Upstream reservoirs fill on snowmelt and draw down through autumn, which gives them a yearly rhythm you can see in the line. Mead sits below Hoover Dam and is governed by release schedules rather than by a spring freshet, so its year does not have that shape.
       </p>
       <p class="readable">
-        Counting the {h.completeYears} complete calendar years from {h.firstFillCutoff} onward in the same file, and asking only which month carried each year's highest and lowest reading, <span class="em-strong">{h.peakMonth} takes the annual high most often, in {h.peakMonthCount} of those {h.completeYears} years</span>, and <span class="em-strong">{h.troughMonth} takes the annual low most often, in {h.troughMonthCount}</span>{h.runnerUpTroughMonth && <>, with {h.runnerUpTroughMonth} the runner-up trough in {h.runnerUpTroughCount}</>}.
+        Count the {h.completeYears} complete calendar years from {h.firstFillCutoff} onward and ask only which month carried each year's highest reading. The winner is <span class="em-strong">{h.peakMonth}, and it wins only {h.peakMonthCount} of {h.completeYears} years, {h.peakMonthShare} percent</span>. The rest scatter: {h.peakTop3.slice(1).map((x) => `${x.month} takes ${x.count}`).join(', ')}. The annual low is just as spread, with {h.troughMonth} the most common at {h.troughMonthCount} years.
       </p>
       <p class="readable">
-        These are counts of which month won, not average levels, because a month that wins twenty times out of forty-five is a fact a row can carry and an average is not. The practical consequence: a falling level in September tells you very little on its own. Measure it against where the same year peaked, or against the same calendar date in earlier years, which is what the rank above does.
+        Compare that with <a href="/lake/lake-powell/chart/">Lake Powell upstream</a>, where {powell.peakMonth} carries the annual high in {powell.peakMonthCount} of {powell.completeYears} years, {powell.peakMonthShare} percent of them. Powell has a season. Mead has an operating schedule.
+      </p>
+      <p class="readable">
+        The practical consequence is the opposite of what people usually assume. On a snowmelt reservoir a low reading in autumn may be ordinary for the date. On Mead there is no reliable seasonal excuse, so a low reading is closer to face value, and the rank against the whole record above is the honest way to read it.
       </p>
     </section>
 
@@ -272,7 +276,7 @@ const ld = [articleLd, datasetLd, speakableLd(PATH), authorLd(),
         <p id="chart-out" role="status" aria-live="polite" style="margin-top:10px;font-size:15px;"></p>
         <noscript><p>The checker needs JavaScript. Every other number on this page is precomputed and shows without it.</p></noscript>
       </div>
-      <script is:inline define:vars={{ FULL: band.fullPoolFt, MINP: band.minPowerPoolFt, DEAD: band.deadPoolFt, TODAY: h.latestFt, POSTLOW: h.postFillLowFt, SERIESLOW: h.seriesLowFt, HIGH: h.recordHighFt, DAILY: POWELL_HISTORY_DAILY, DSTART: POWELL_HISTORY_DAILY_START, CUTOFF: h.firstFillCutoff }}>
+      <script is:inline define:vars={{ FULL: band.fullPoolFt, MINP: band.minPowerPoolFt, DEAD: band.deadPoolFt, TODAY: h.latestFt, POSTLOW: h.postFillLowFt, SERIESLOW: h.seriesLowFt, HIGH: h.recordHighFt, DAILY: MEAD_HISTORY_DAILY, DSTART: MEAD_HISTORY_DAILY_START, CUTOFF: h.firstFillCutoff }}>
         // NASA Power of 10 applied to the one piece of client JS on this page, same posture
         // as the depth page. Preconditions asserted, every lookup checked, input bounded,
         // and the whole thing fails closed rather than binding a half-wired widget.
@@ -384,7 +388,7 @@ const ld = [articleLd, datasetLd, speakableLd(PATH), authorLd(),
               if (dates[i] >= CUTOFF && valsH[i] < valsH[idx]) sinceCutoff++;
             }
             var pct = (below / valsH.length) * 100;
-            dOut.textContent = 'On ' + fmtD(want) + ' Lake Powell stood at ' + v.toFixed(2) + ' ft. '
+            dOut.textContent = 'On ' + fmtD(want) + ' Lake Mead stood at ' + v.toFixed(2) + ' ft. '
               + below.toLocaleString('en-US') + ' of the ' + valsH.length.toLocaleString('en-US')
               + ' daily readings in the file are lower, so that day sits in the bottom '
               + (pct < 1 ? pct.toFixed(2) : pct.toFixed(1)) + ' percent of the record'
@@ -399,18 +403,18 @@ const ld = [articleLd, datasetLd, speakableLd(PATH), authorLd(),
     </section>
 
     <section class="section airy">
-      <h2>Questions about the Lake Powell record</h2>
-      <p class="readable"><strong>How far back does this chart go?</strong> To {fmtRecordDate(h.recordStart)}, the first row in Reclamation's daily file for Lake Powell. The dam gates closed in 1963. The file carries {h.totalDays.toLocaleString('en-US')} daily readings through {fmtRecordDate(h.recordEnd)}.</p>
-      <p class="readable"><strong>Is this the lowest Lake Powell has ever been?</strong> No. The lowest reading in the whole file is {fmtNum(h.seriesLowFt, 2)} ft on {fmtRecordDate(h.seriesLowDate)}, during the years the reservoir was filling for the first time. {h.latestIsPostFillLow ? <>Today is the lowest since it first filled, which is a different and narrower statement.</> : <>Today sits {vsSeriesLow ? vsSeriesLow.text : 'n/a'} that mark.</>}</p>
+      <h2>Questions about the Lake Mead record</h2>
+      <p class="readable"><strong>How far back does this chart go?</strong> To {fmtRecordDate(h.recordStart)}, the first row in Reclamation's daily file for Lake Mead. The dam gates closed in 1963. The file carries {h.totalDays.toLocaleString('en-US')} daily readings through {fmtRecordDate(h.recordEnd)}.</p>
+      <p class="readable"><strong>Is this the lowest Lake Mead has ever been?</strong> No. The lowest reading in the whole file is {fmtNum(h.seriesLowFt, 2)} ft on {fmtRecordDate(h.seriesLowDate)}, during the years the reservoir was filling for the first time. {h.latestIsPostFillLow ? <>Today is the lowest since it first filled, which is a different and narrower statement.</> : <>Today sits {vsSeriesLow ? vsSeriesLow.text : 'n/a'} that mark.</>}</p>
       <p class="readable"><strong>What was the highest?</strong> {fmtNum(h.recordHighFt, 2)} ft on {fmtRecordDate(h.recordHighDate)}, which is {fmtNum(h.recordHighFt - band.fullPoolFt, 2)} ft above the {fmtNum(band.fullPoolFt, 0)} ft full-pool line.</p>
-      <p class="readable"><strong>Why does this chart differ from the live reading elsewhere on the site?</strong> Because they are different series. This chart plots Reclamation's daily pool elevation for site 919. The live reading comes from USGS gage 09379900, sampled every fifteen minutes. Both are federal, neither is wrong, and they are not the same measurement.</p>
+      <p class="readable"><strong>Why does this chart differ from the live reading elsewhere on the site?</strong> Because they are different series. This chart plots Reclamation's daily pool elevation for site 921. The live reading comes from the Reclamation Lower Colorado hourly report, sampled every fifteen minutes. Both are federal, neither is wrong, and they are not the same measurement.</p>
       <p class="readable"><strong>How often does it update?</strong> The file is refetched and every figure on this page recomputed on each build, which runs daily.</p>
     </section>
 
     <section class="section airy">
       <h2>Where these numbers come from</h2>
       <p class="readable">
-        Every figure on this page is computed in code from <a href={USBR_CSV}>one file</a>, Reclamation's complete daily pool-elevation record for Lake Powell, site 919. The build fetches it, parses {h.totalDays.toLocaleString('en-US')} daily readings, drops the sentinel values Reclamation uses for a missing day, and computes the extrema, the counts and the rankings from what is left. None of the numbers is typed by hand, and none is carried as a constant that could go stale, which is exactly what went wrong with the previous record-low figure this site published.
+        Every figure on this page is computed in code from <a href={USBR_CSV}>one file</a>, Reclamation's complete daily pool-elevation record for Lake Mead, site 921. The build fetches it, parses {h.totalDays.toLocaleString('en-US')} daily readings, drops the sentinel values Reclamation uses for a missing day, and computes the extrema, the counts and the rankings from what is left. None of the numbers is typed by hand, and none is carried as a constant that could go stale, which is exactly what went wrong with the previous record-low figure this site published.
       </p>
       <p class="readable">
         The rankings are computed over the whole file rather than over a window. That distinction matters. A minimum found inside a date range only tells you the minimum of that range, so this page establishes the record by measuring the entire population, which is the only honest way to use the word lowest.
@@ -419,7 +423,7 @@ const ld = [articleLd, datasetLd, speakableLd(PATH), authorLd(),
         The published landmark elevations, full pool, minimum power pool and dead pool, come from <a href={USBR_PDF}>Reclamation</a> and are constants because they describe the dam, not the water.
       </p>
       <p class="readable">
-        Want today's reading rather than the record? <a href="/lake/lake-powell/">The Lake Powell water level page</a> carries the live gage figure and the 30 day trend. Downstream, <a href="/lake/lake-mead/chart/">the same chart for Lake Mead</a> covers the reservoir this one feeds, and both are at their lowest since they first filled. For the depth at the dam, see <a href="/lake/lake-powell/depth/">how deep Lake Powell is right now</a>. If you are launching a boat, <a href="/lake/lake-powell/boat-ramps/">every ramp minimum against today's level</a> is the page you want.
+        Want today's reading rather than the record? <a href="/lake/lake-mead/">The Lake Mead water level page</a> carries the live figure, the percent full and the 24 hour move. Upstream, <a href="/lake/lake-powell/chart/">the same chart for Lake Powell</a> covers the reservoir that feeds this one, and the two records are worth reading side by side.
       </p>
       <p class="readable" style="font-size:14px;color:var(--t2);">
         Levels are point-in-time readings and can lag real conditions, confirm ramp and hazard status with the lake operator before heading out. Not affiliated with any government agency, data is republished from public USGS, CDEC, and USBR feeds.

@@ -291,9 +291,34 @@ export type PowellHistoryStats = {
   peakMonth: string; peakMonthCount: number;
   troughMonth: string; troughMonthCount: number;
   runnerUpTroughMonth: string | null; runnerUpTroughCount: number | null;
+  peakMonthShare: number | null; troughMonthShare: number | null;
+  peakTop3: { month: string; count: number }[];
+  troughTop3: { month: string; count: number }[];
+  seasonalIsPronounced: boolean;
 };
 
 export const POWELL_HISTORY = (powellHistory as any).stats as PowellHistoryStats;
+
+// Lake Mead carries the same shape from the same kind of file (Reclamation site 921, daily from
+// 1935-02-02). Its band constants come from Reclamation's published Hoover Dam figures.
+import meadHistory from '../data/mead-history.json';
+export const MEAD_HISTORY = (meadHistory as any).stats as PowellHistoryStats;
+export const MEAD_HISTORY_MONTHLY = ((meadHistory as any).monthly ?? []) as [string, number][];
+export const MEAD_HISTORY_DAILY = String((meadHistory as any).daily ?? '');
+export const MEAD_HISTORY_DAILY_START = String((meadHistory as any).dailyStart ?? '');
+export const MEAD_HISTORY_SOURCE: string =
+  (meadHistory as any)?.source ?? 'https://www.usbr.gov/uc/water/hydrodata/reservoir_data/921/csv/49.csv';
+export const MEAD_HISTORY_CATALOG: string =
+  (meadHistory as any)?.catalog ?? 'https://data.usbr.gov/catalog/2362/item/508';
+
+// Hoover Dam operating landmarks, all Reclamation-published. Full pool is the elevation at the
+// top of the raised spillway gates; minimum power pool is where the plant can no longer generate;
+// dead pool is the lowest elevation from which water can pass the dam at all.
+export const MEAD_BAND = {
+  fullPoolFt: 1229,
+  minPowerPoolFt: 950,
+  deadPoolFt: 895,
+};
 export const POWELL_HISTORY_MONTHLY = ((powellHistory as any).monthly ?? []) as [string, number][];
 // The complete daily series, delta-encoded (see scripts/fetch-powell-history.mjs). Shipped to the
 // browser so the lookup answers from the same numbers the chart draws, with no network call.

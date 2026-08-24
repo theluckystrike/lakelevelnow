@@ -1,7 +1,9 @@
 {
+  "lake": "Lake Powell",
+  "slug": "powell",
   "source": "https://www.usbr.gov/uc/water/hydrodata/reservoir_data/919/csv/49.csv",
   "catalog": "https://data.usbr.gov/catalog/2362/item/508",
-  "as_of": "2026-08-24T05:57:55.676Z",
+  "as_of": "2026-08-24T09:16:30.657Z",
   "stats": {
     "completeYears": 45,
     "peakMonth": "July",
@@ -10,6 +12,37 @@
     "troughMonthCount": 19,
     "runnerUpTroughMonth": "April",
     "runnerUpTroughCount": 14,
+    "peakMonthShare": 46.7,
+    "troughMonthShare": 42.2,
+    "peakTop3": [
+      {
+        "month": "July",
+        "count": 21
+      },
+      {
+        "month": "January",
+        "count": 11
+      },
+      {
+        "month": "June",
+        "count": 10
+      }
+    ],
+    "troughTop3": [
+      {
+        "month": "December",
+        "count": 19
+      },
+      {
+        "month": "April",
+        "count": 14
+      },
+      {
+        "month": "March",
+        "count": 8
+      }
+    ],
+    "seasonalIsPronounced": true,
     "latestDate": "2026-08-22",
     "latestFt": 3518.96,
     "totalDays": 22884,

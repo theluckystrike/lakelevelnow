@@ -57,6 +57,10 @@ const asOfIso = reading?.as_of ? String(reading.as_of).slice(0, 10) : '';
 const vsFull = compareToMark(h.latestFt, band.fullPoolFt, 1);
 const vsMinPower = compareToMark(h.latestFt, band.minPowerPoolFt, 1);
 const vsDead = compareToMark(h.latestFt, band.deadPoolFt, 1);
+// The record high against full pool. Powell's exceeds it; Mead's sits under it, because
+// Mead has not reached its full-pool line since the file began. Same helper either way, so
+// neither page can print a negative into a hardcoded direction word.
+const vsHighFull = compareToMark(h.recordHighFt, band.fullPoolFt, 2);
 const vsSeriesLow = compareToMark(h.latestFt, h.seriesLowFt, 1);
 const vsLowestSameDate = compareToMark(h.latestFt, h.lowestSameDateFt, 1);
 const yearsOfRecord = Number(h.recordEnd.slice(0, 4)) - Number(h.recordStart.slice(0, 4));
@@ -402,7 +406,7 @@ const ld = [articleLd, datasetLd, speakableLd(PATH), authorLd(),
       <h2>Questions about the Lake Powell record</h2>
       <p class="readable"><strong>How far back does this chart go?</strong> To {fmtRecordDate(h.recordStart)}, the first row in Reclamation's daily file for Lake Powell. The dam gates closed in 1963. The file carries {h.totalDays.toLocaleString('en-US')} daily readings through {fmtRecordDate(h.recordEnd)}.</p>
       <p class="readable"><strong>Is this the lowest Lake Powell has ever been?</strong> No. The lowest reading in the whole file is {fmtNum(h.seriesLowFt, 2)} ft on {fmtRecordDate(h.seriesLowDate)}, during the years the reservoir was filling for the first time. {h.latestIsPostFillLow ? <>Today is the lowest since it first filled, which is a different and narrower statement.</> : <>Today sits {vsSeriesLow ? vsSeriesLow.text : 'n/a'} that mark.</>}</p>
-      <p class="readable"><strong>What was the highest?</strong> {fmtNum(h.recordHighFt, 2)} ft on {fmtRecordDate(h.recordHighDate)}, which is {fmtNum(h.recordHighFt - band.fullPoolFt, 2)} ft above the {fmtNum(band.fullPoolFt, 0)} ft full-pool line.</p>
+      <p class="readable"><strong>What was the highest?</strong> {fmtNum(h.recordHighFt, 2)} ft on {fmtRecordDate(h.recordHighDate)}, which is {vsHighFull ? vsHighFull.text : 'n/a'} the {fmtNum(band.fullPoolFt, 0)} ft full-pool line.</p>
       <p class="readable"><strong>Why does this chart differ from the live reading elsewhere on the site?</strong> Because they are different series. This chart plots Reclamation's daily pool elevation for site 919. The live reading comes from USGS gage 09379900, sampled every fifteen minutes. Both are federal, neither is wrong, and they are not the same measurement.</p>
       <p class="readable"><strong>How often does it update?</strong> The file is refetched and every figure on this page recomputed on each build, which runs daily.</p>
     </section>

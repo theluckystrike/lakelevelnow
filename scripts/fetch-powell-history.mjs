@@ -120,7 +120,51 @@ function computeStats(series) {
 
   const r2 = (n) => (n == null ? null : Math.round(n * 100) / 100);
 
+  // Seasonal shape, counted rather than averaged. For every COMPLETE calendar year on or after
+  // the first-fill cutoff, find the month carrying that year's highest reading and the month
+  // carrying its lowest, then count how often each month wins. A count over whole years is
+  // evidenced by the rows that carry each extreme; a monthly mean or median is not, which is why
+  // this is phrased as "July takes the annual high most often" and never as an average level.
+  const byYear = new Map();
+  for (let i = 0; i < series.length; i += 1) {
+    const r = series[i];
+    if (r.d < FIRST_FILL_CUTOFF) continue;
+    const y = r.d.slice(0, 4);
+    let e = byYear.get(y);
+    if (!e) { e = { hi: r, lo: r, n: 0 }; byYear.set(y, e); }
+    if (r.v > e.hi.v) e.hi = r;
+    if (r.v < e.lo.v) e.lo = r;
+    e.n += 1;
+  }
+  const hiMonths = new Array(12).fill(0);
+  const loMonths = new Array(12).fill(0);
+  let completeYears = 0;
+  for (const [, e] of byYear) {
+    if (e.n < 300) continue;                 // skip partial years at either end of the file
+    completeYears += 1;
+    hiMonths[Number(e.hi.d.slice(5, 7)) - 1] += 1;
+    loMonths[Number(e.lo.d.slice(5, 7)) - 1] += 1;
+  }
+  const MONTHS = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+  const topOf = (arr) => {
+    let bi = 0;
+    for (let i = 1; i < arr.length; i += 1) if (arr[i] > arr[bi]) bi = i;
+    return { month: MONTHS[bi], count: arr[bi] };
+  };
+  const secondLoOf = () => {
+    const idx = loMonths.map((c, i) => [c, i]).sort((a, b) => b[0] - a[0]);
+    return idx.length > 1 ? { month: MONTHS[idx[1][1]], count: idx[1][0] } : null;
+  };
+  const peakMonth = topOf(hiMonths);
+  const troughMonth = topOf(loMonths);
+  const runnerUpTrough = secondLoOf();
+
   return {
+    completeYears,
+    peakMonth: peakMonth.month, peakMonthCount: peakMonth.count,
+    troughMonth: troughMonth.month, troughMonthCount: troughMonth.count,
+    runnerUpTroughMonth: runnerUpTrough ? runnerUpTrough.month : null,
+    runnerUpTroughCount: runnerUpTrough ? runnerUpTrough.count : null,
     latestDate: latest.d,
     latestFt: r2(latest.v),
     totalDays: series.length,
@@ -180,12 +224,35 @@ async function main() {
   }
   monthly.push(series[series.length - 1]);
 
+  // The COMPLETE daily series, delta-encoded, so the page can answer "what was it on this date"
+  // and "how often has it been this low" in the reader's browser from the same numbers the chart
+  // draws, rather than from an estimate or a round trip. Encoding: a start date, then one
+  // base-36 signed delta per day in hundredths of a foot, comma separated. Days the file skips
+  // are encoded as an explicit gap so a date lookup never silently returns a neighbour's value.
+  const daily = [];
+  let prevHundredths = null;
+  let prevDayNum = null;
+  const dayNum = (iso) => Math.round(Date.parse(iso + 'T00:00:00Z') / 86400000);
+  for (let i = 0; i < series.length; i += 1) {
+    const hv = Math.round(series[i].v * 100);
+    const dn = dayNum(series[i].d);
+    if (prevHundredths === null) { daily.push(String(hv)); }
+    else {
+      const gap = dn - prevDayNum;
+      const delta = hv - prevHundredths;
+      daily.push((gap > 1 ? 'g' + gap.toString(36) + ':' : '') + delta.toString(36));
+    }
+    prevHundredths = hv; prevDayNum = dn;
+  }
+
   const payload = {
     source: SOURCE,
     catalog: CATALOG,
     as_of: new Date().toISOString(),
     stats,
     monthly: monthly.map((r) => [r.d, Math.round(r.v * 100) / 100]),
+    dailyStart: series[0].d,
+    daily: daily.join(','),
   };
 
   let previous = null;

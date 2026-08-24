@@ -29,6 +29,7 @@ import AlmanacContext from '../../../components/AlmanacContext.astro';
 import {
   LAKES, getReading, fmtNum, POWELL_BAND, feedLabel,
   POWELL_HISTORY, POWELL_HISTORY_MONTHLY, POWELL_HISTORY_SOURCE, POWELL_HISTORY_CATALOG,
+  POWELL_HISTORY_DAILY, POWELL_HISTORY_DAILY_START,
   compareToMark, fmtRecordDate,
 } from '../../../lib/lakes';
 import { authorLd, breadcrumbLd, speakableLd, absUrl } from '../../../lib/seo';
@@ -240,10 +241,30 @@ const ld = [articleLd, datasetLd, speakableLd(PATH), authorLd(),
     </section>
 
     <section class="section airy">
+      <h2>The seasonal shape of an ordinary Powell year</h2>
+      <p class="readable">
+        A chart of the last twelve months will mislead you, because Powell runs a strong annual rhythm underneath whatever the long trend is doing. Snowmelt fills it through spring and early summer, then releases and evaporation draw it down through autumn.
+      </p>
+      <p class="readable">
+        Counting the {h.completeYears} complete calendar years from {h.firstFillCutoff} onward in the same file, and asking only which month carried each year's highest and lowest reading, <span class="em-strong">{h.peakMonth} takes the annual high most often, in {h.peakMonthCount} of those {h.completeYears} years</span>, and <span class="em-strong">{h.troughMonth} takes the annual low most often, in {h.troughMonthCount}</span>{h.runnerUpTroughMonth && <>, with {h.runnerUpTroughMonth} the runner-up trough in {h.runnerUpTroughCount}</>}.
+      </p>
+      <p class="readable">
+        These are counts of which month won, not average levels, because a month that wins twenty times out of forty-five is a fact a row can carry and an average is not. The practical consequence: a falling level in September tells you very little on its own. Measure it against where the same year peaked, or against the same calendar date in earlier years, which is what the rank above does.
+      </p>
+    </section>
+
+    <section class="section airy">
       <h2 style="margin-bottom:8px;">Check any elevation against the record</h2>
       <div class="callout a" style="max-width:660px;">
-        <p style="margin-bottom:10px;">Type a surface elevation. The page answers with where it would sit against the published landmarks and against today's reading, using the same figures as the tables above.</p>
-        <label for="chart-input" style="font-size:13px;color:var(--t2);">Surface elevation, ft above sea level</label>
+        <p style="margin-bottom:10px;">Pick a date and get the pool elevation Reclamation recorded that day, plus where it ranks among every reading in the file. Or enter an elevation and get how often the lake has been that low and when. Both answers are computed in your browser from the same series the chart draws. Nothing is sent anywhere.</p>
+        <label for="chart-date" style="font-size:13px;color:var(--t2);">A date in the record</label>
+        <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-top:4px;margin-bottom:14px;">
+          <input id="chart-date" type="date" min={h.recordStart} max={h.recordEnd} value={h.recordEnd} style="padding:8px 10px;font-size:15px;" />
+          <button id="chart-date-go" type="button" class="btn">Look up that day</button>
+        </div>
+        <p id="chart-date-out" role="status" aria-live="polite" style="margin:0 0 16px;font-size:15px;"></p>
+
+        <label for="chart-input" style="font-size:13px;color:var(--t2);">Or an elevation in feet</label>
         <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-top:4px;">
           <input id="chart-input" type="number" inputmode="decimal" step="any" value={String(h.latestFt)} placeholder="3519.2" style="width:140px;padding:8px 10px;font-size:15px;" />
           <button id="chart-go" type="button" class="btn">Place it in the record</button>
@@ -251,7 +272,7 @@ const ld = [articleLd, datasetLd, speakableLd(PATH), authorLd(),
         <p id="chart-out" role="status" aria-live="polite" style="margin-top:10px;font-size:15px;"></p>
         <noscript><p>The checker needs JavaScript. Every other number on this page is precomputed and shows without it.</p></noscript>
       </div>
-      <script is:inline define:vars={{ FULL: band.fullPoolFt, MINP: band.minPowerPoolFt, DEAD: band.deadPoolFt, TODAY: h.latestFt, POSTLOW: h.postFillLowFt, SERIESLOW: h.seriesLowFt, HIGH: h.recordHighFt }}>
+      <script is:inline define:vars={{ FULL: band.fullPoolFt, MINP: band.minPowerPoolFt, DEAD: band.deadPoolFt, TODAY: h.latestFt, POSTLOW: h.postFillLowFt, SERIESLOW: h.seriesLowFt, HIGH: h.recordHighFt, DAILY: POWELL_HISTORY_DAILY, DSTART: POWELL_HISTORY_DAILY_START, CUTOFF: h.firstFillCutoff }}>
         // NASA Power of 10 applied to the one piece of client JS on this page, same posture
         // as the depth page. Preconditions asserted, every lookup checked, input bounded,
         // and the whole thing fails closed rather than binding a half-wired widget.
@@ -298,6 +319,81 @@ const ld = [articleLd, datasetLd, speakableLd(PATH), authorLd(),
           if (go) go.addEventListener('click', run);
           input.addEventListener('input', run);
           if (input.value) run();
+
+          // ---- the complete daily series, decoded once, for the date lookup ---------------
+          // Encoding is documented in scripts/fetch-powell-history.mjs: an absolute first value
+          // in hundredths of a foot, then one base-36 signed delta per day, with an explicit
+          // 'gN:' gap marker wherever the file skips days. Decoding is bounded and any malformed
+          // token stops the decode rather than producing a wrong series.
+          var dates = [], valsH = [];
+          (function decode() {
+            if (typeof DAILY !== 'string' || !DAILY || !/^\d{4}-\d{2}-\d{2}$/.test(String(DSTART))) return;
+            var toks = DAILY.split(',');
+            var MAX = 60000;
+            if (toks.length > MAX) return;
+            var dayMs = 86400000;
+            var t = Date.parse(DSTART + 'T00:00:00Z');
+            if (!Number.isFinite(t)) return;
+            var cur = null;
+            for (var i = 0; i < toks.length; i++) {
+              var tk = toks[i];
+              if (i > 0) {
+                var gi = tk.indexOf(':');
+                if (gi > 0 && tk.charAt(0) === 'g') {
+                  var gap = parseInt(tk.slice(1, gi), 36);
+                  if (!Number.isFinite(gap)) return;
+                  t += gap * dayMs;
+                  tk = tk.slice(gi + 1);
+                } else { t += dayMs; }
+                var d = parseInt(tk, 36);
+                if (!Number.isFinite(d)) return;
+                cur += d;
+              } else {
+                cur = parseInt(tk, 10);
+                if (!Number.isFinite(cur)) return;
+              }
+              dates.push(new Date(t).toISOString().slice(0, 10));
+              valsH.push(cur);
+            }
+          })();
+
+          var dInput = document.getElementById('chart-date');
+          var dOut = document.getElementById('chart-date-out');
+          function fmtD(iso) {
+            var M = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+            var p = String(iso).split('-');
+            return M[Number(p[1]) - 1] + ' ' + Number(p[2]) + ', ' + p[0];
+          }
+          function runDate() {
+            if (!dOut) return;
+            if (!dates.length) { dOut.textContent = 'The series did not load, so the date lookup is unavailable. Every other figure on this page is precomputed.'; return; }
+            var want = dInput && dInput.value ? String(dInput.value) : '';
+            if (!/^\d{4}-\d{2}-\d{2}$/.test(want)) { dOut.textContent = 'Pick a date between ' + fmtD(dates[0]) + ' and ' + fmtD(dates[dates.length - 1]) + '.'; return; }
+            var idx = -1;
+            var lo = 0, hi = dates.length - 1;
+            while (lo <= hi) {                       // bounded binary search
+              var mid = (lo + hi) >> 1;
+              if (dates[mid] === want) { idx = mid; break; }
+              if (dates[mid] < want) lo = mid + 1; else hi = mid - 1;
+            }
+            if (idx < 0) { dOut.textContent = 'Reclamation\u2019s file carries no reading for ' + fmtD(want) + '. The record runs ' + fmtD(dates[0]) + ' to ' + fmtD(dates[dates.length - 1]) + ' and skips a few days.'; return; }
+            var v = valsH[idx] / 100;
+            var below = 0, sinceCutoff = 0;
+            for (var i = 0; i < valsH.length; i++) {
+              if (valsH[i] < valsH[idx]) below++;
+              if (dates[i] >= CUTOFF && valsH[i] < valsH[idx]) sinceCutoff++;
+            }
+            var pct = (below / valsH.length) * 100;
+            dOut.textContent = 'On ' + fmtD(want) + ' Lake Powell stood at ' + v.toFixed(2) + ' ft. '
+              + below.toLocaleString('en-US') + ' of the ' + valsH.length.toLocaleString('en-US')
+              + ' daily readings in the file are lower, so that day sits in the bottom '
+              + (pct < 1 ? pct.toFixed(2) : pct.toFixed(1)) + ' percent of the record'
+              + (sinceCutoff === 0 ? ', and no day on or after ' + CUTOFF + ' is lower.' : ', with ' + sinceCutoff.toLocaleString('en-US') + ' of the lower days falling on or after ' + CUTOFF + '.');
+          }
+          var dGo = document.getElementById('chart-date-go');
+          if (dGo) dGo.addEventListener('click', runDate);
+          if (dInput) dInput.addEventListener('change', runDate);
+          if (dInput && dInput.value) runDate();
         })();
       </script>
     </section>

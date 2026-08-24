@@ -287,10 +287,18 @@ export type PowellHistoryStats = {
   medianForDateFt: number; rankForDate: number; yearsForDate: number;
   lowestSameDateFt: number; lowestSameDateDate: string;
   vsMedianForDateFt: number;
+  completeYears: number;
+  peakMonth: string; peakMonthCount: number;
+  troughMonth: string; troughMonthCount: number;
+  runnerUpTroughMonth: string | null; runnerUpTroughCount: number | null;
 };
 
 export const POWELL_HISTORY = (powellHistory as any).stats as PowellHistoryStats;
 export const POWELL_HISTORY_MONTHLY = ((powellHistory as any).monthly ?? []) as [string, number][];
+// The complete daily series, delta-encoded (see scripts/fetch-powell-history.mjs). Shipped to the
+// browser so the lookup answers from the same numbers the chart draws, with no network call.
+export const POWELL_HISTORY_DAILY = String((powellHistory as any).daily ?? '');
+export const POWELL_HISTORY_DAILY_START = String((powellHistory as any).dailyStart ?? '');
 export const POWELL_HISTORY_SOURCE: string =
   (powellHistory as any)?.source ?? 'https://www.usbr.gov/uc/water/hydrodata/reservoir_data/919/csv/49.csv';
 export const POWELL_HISTORY_CATALOG: string =

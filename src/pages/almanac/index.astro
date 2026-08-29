@@ -31,7 +31,7 @@ const striking = [...lakes]
   .slice(0, 3);
 
 const title = `Lake Level Almanac: is your lake normal for the date? | ${data.lakeCount} US reservoirs`;
-const description = `Every tracker shows today's elevation. This shows whether it is normal. ${deepest} years of daily record for ${data.lakeCount} reservoirs, turned into day-of-year normals, monthly climatology, and how often the lake has been below your own ramp or dock elevation. $${data.priceSingleUsd} one time.`;
+const description = `Every tracker shows today's elevation. This shows whether it is normal. ${deepest} years of daily record for ${data.lakeCount} reservoirs, turned into day-of-year normals, monthly climatology, and how often the lake has been below your own ramp or dock elevation. $${data.priceSingleUsd} for one lake, $${data.priceBundleUsd} for all ${data.lakeCount}.`;
 
 const ld = [{
   '@context': 'https://schema.org',
@@ -65,29 +65,40 @@ const ld = [{
       a tracker, not in the search result you arrived from. The elevation is free everywhere. The
       context is nowhere.</p>
 
-      <div class="alm-buy">
+      {/* The bundle is the flagship and comes first in DOM order on every viewport. The
+          single-lake button is an in-page jump to the lake table, not a bare payment link:
+          a bare link sold a product with no lake attached. */}
+      <div class="alm-buy" data-alm-place="sales-hero">
         <div class="alm-buy-main">
-          <div class="alm-price">${data.priceSingleUsd}<span>one time, one lake</span></div>
-          <a class="alm-btn" href={SINGLE_LINK} data-alm-buy="single" rel="nofollow">
-            Get your lake&rsquo;s almanac
-          </a>
-          <p class="alm-micro">Instant download &middot; no account, no password &middot;
-          60-day refund, no questions</p>
-        </div>
-        <div class="alm-buy-alt">
-          <div class="alm-price small">${data.priceBundleUsd}<span>all {data.lakeCount} lakes</span></div>
-          <a class="alm-btn ghost" href={BUNDLE_LINK} data-alm-buy="bundle" rel="nofollow">
+          <div class="alm-price">${data.priceBundleUsd}<span>one time &middot; all {data.lakeCount} lakes
+            &middot; {totalReadings} daily readings &middot; {deepest} years</span></div>
+          <a class="alm-btn" href={BUNDLE_LINK} data-alm-buy="bundle" rel="nofollow">
             Get every lake
           </a>
-          <p class="alm-micro">{totalReadings} daily readings in one ZIP</p>
+          <p class="alm-micro">For marinas, dock builders, agents, guides and anyone who reports
+          on more than one lake.</p>
+        </div>
+        <div class="alm-buy-alt">
+          <div class="alm-price small">${data.priceSingleUsd}<span>one time, one lake</span></div>
+          <a class="alm-btn ghost" href="#pick" data-alm-pick="hero">
+            Get one lake&rsquo;s almanac, ${data.priceSingleUsd}
+          </a>
+          <p class="alm-micro">Pick the lake below. Checkout also asks which lake.</p>
         </div>
       </div>
+      <p class="alm-sample">See a complete sample first: <a href="/almanac/sample/">the Lake Powell
+      almanac</a> (free, no email).</p>
+      <p class="alm-micro alm-terms">Instant download &middot; no account, no password &middot;
+      60-day refund, no questions</p>
+      <p class="alm-micro alm-trust">Checkout runs on Stripe under our parent company, BeLikeNative (Autom8 LLC). That name appears on the receipt and card statement.</p>
     </section>
 
     <section class="section">
       <h2>What you get</h2>
       <p class="readable">One ZIP per lake. Open the HTML file in any browser. It works offline, on
-      a phone, and it never calls out to anything. The CSVs beside it are the receipts.</p>
+      a phone, and it never calls out to anything. The CSVs beside it are the receipts.
+      <a href="/almanac/sample/">Open the complete Lake Powell almanac</a> to see all of it before
+      you pay.</p>
 
       <div class="alm-grid">
         <div class="alm-card">
@@ -150,7 +161,7 @@ const ld = [{
       </div>
     </section>
 
-    <section class="section">
+    <section class="section" id="pick" data-alm-place="sales-table">
       <h2>Pick your lake</h2>
       <p class="readable">Choose one and the checkout knows which almanac to send. Deeper records
       make better normals, so the years column is worth a look before you buy.</p>
@@ -171,15 +182,25 @@ const ld = [{
                        rel="nofollow">${data.priceSingleUsd}</a></td>
               </tr>
             ))}
+            {[data].map((d) => (
+              <tr class="alm-bundle-row">
+                <td colspan="5"><strong>Every lake above</strong> <span class="mut">&middot; all
+                  {d.lakeCount} lakes, {totalReadings} daily readings, one ZIP</span></td>
+                <td><a class="alm-mini" data-alm-buy="bundle" href={BUNDLE_LINK}
+                       rel="nofollow">${d.priceBundleUsd}</a></td>
+              </tr>
+            ))}
           </tbody>
         </table>
       </div>
+      <p class="alm-micro">Checkout runs on Stripe under our parent company, BeLikeNative (Autom8 LLC). That name appears on the receipt and card statement.</p>
     </section>
 
     <section class="section">
       <h2>Why you should believe the numbers</h2>
-      <p class="readable">Nobody has bought this yet, so there are no reviews to show you and it
-      would be worth nothing if there were. Here is what can be checked instead.</p>
+      <p class="readable">Nobody has bought this yet, so there are no reviews. Here is what can be
+      checked instead, and here is <a href="/almanac/sample/">a complete sample almanac</a> to open
+      before you pay.</p>
       <ul class="readable">
         <li><strong>Every reading is federal or state public-domain data</strong>, named to the
         gage. USGS Water Services, California&rsquo;s Data Exchange Center, and Reclamation&rsquo;s
@@ -241,9 +262,14 @@ const ld = [{
       <h2>{featured.sentence}</h2>
       <p class="readable">You can go and check that against the gage yourself. Working out what it
       means took {featured.obs.toLocaleString('en-US')} readings and a lot of arithmetic. That is
-      what the ${data.priceSingleUsd} buys.</p>
-      <p><a class="alm-btn" href={SINGLE_LINK} data-alm-buy="single" rel="nofollow">
-        Get your lake&rsquo;s almanac for ${data.priceSingleUsd}</a></p>
+      what the ${data.priceSingleUsd} buys for one lake, and the ${data.priceBundleUsd} for all
+      {data.lakeCount}.</p>
+      <p class="alm-close-cta" data-alm-place="sales-close">
+        <a class="alm-btn" href={BUNDLE_LINK} data-alm-buy="bundle" rel="nofollow">
+          Get every lake, ${data.priceBundleUsd}</a>
+        <a class="alm-close-alt" href="#pick" data-alm-pick="close">or one lake for ${data.priceSingleUsd}</a>
+      </p>
+      <p class="alm-micro">Checkout runs on Stripe under our parent company, BeLikeNative (Autom8 LLC). That name appears on the receipt and card statement.</p>
     </section>
 
   </div>
@@ -271,6 +297,12 @@ const ld = [{
   .alm-btn.ghost { background: transparent; color: var(--teal); }
   .alm-btn[href=""] { pointer-events: none; opacity: .45; }
   .alm-micro { font-size: 12.5px; color: var(--t2); margin: 12px 0 0; }
+  .alm-sample { font-size: 15px; font-weight: 500; margin: 14px 0 0; }
+  .alm-terms { margin-top: 6px; }
+  .alm-trust { margin-top: 6px; }
+  .alm-bundle-row td { border-top: 2px solid var(--ink); }
+  .alm-close-cta { display: flex; flex-wrap: wrap; align-items: center; gap: 16px; }
+  .alm-close-alt { font-size: 15px; font-weight: 500; }
   .alm-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
     gap: 14px; margin-top: 18px; }
   .alm-card { border: 1px solid var(--border); border-radius: 10px; padding: 18px 20px;

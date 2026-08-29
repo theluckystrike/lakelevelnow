@@ -2,6 +2,7 @@
 import BaseLayout from '../../layouts/BaseLayout.astro';
 import LakeGauge from '../../components/LakeGauge.astro';
 import AlmanacContext from '../../components/AlmanacContext.astro';
+import AlmanacPeek from '../../components/AlmanacPeek.astro';
 import { almanacContext, titleClause, descriptionClause } from '../../lib/almanac';
 import { SITE, AFFILIATES } from '../../consts';
 import { LAKES, getReading, launchRead, status, fmtNum, stateName, POWELL_BAND, changeOverSeries, liveBandBelowFullPct, feedLabel, POWELL_HISTORY, compareToMark, fmtRecordDate} from '../../lib/lakes';
@@ -140,13 +141,17 @@ const feedNoun = feedLabel(reading?.feed) === 'CDEC' ? 'CDEC gage reading'
     {qas && <p class="qas" data-keyword={`${lake.name} water level`} style="font-size:15px;color:var(--t1);margin-top:14px;max-width:660px;font-weight:500;">{qas}</p>}
 
     {live ? (
-      <LakeGauge lake={lake} reading={reading!} />
+      <LakeGauge lake={lake} reading={reading!}>
+        <AlmanacPeek slot="after-hero" slug={slug} name={lake.name} alm={alm} />
+      </LakeGauge>
     ) : (
       <div class="callout a" style="margin-top:18px;">
         <p><span class="em-strong">Live Level feed Connecting</span>: {lake.name}'s gage ({feedLabel(lake.feed) || 'the operator feed'}) is being wired. Reference data below; for the current figure, see the
         <a href={feedLabel(reading?.feed) === 'CDEC' && lake.cdec_id ? `https://cdec.water.ca.gov/dynamicapp/staMeta?station_id=${lake.cdec_id}` : feedLabel(reading?.feed) === 'USBR' ? 'https://www.usbr.gov/lc/region/g4000/riverops/webreports/hourlyweb.json' : (lake.usgs_site ? `https://waterdata.usgs.gov/monitoring-location/${lake.usgs_site}/` : '#')}>operator's page</a>.</p>
       </div>
     )}
+
+    {!live && <AlmanacPeek slug={slug} name={lake.name} alm={alm} />}
 
     {/* Directly under the gauge, on purpose. The visitor came for one number and it is
         immediately above this; the one question the number leaves open is whether it is

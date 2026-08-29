@@ -40,6 +40,7 @@ const ctx = almanacContext(slug, level, asOf);
 const lake = ctx?.lake ?? null;
 const LINK = import.meta.env.PUBLIC_ALMANAC_LINK_SINGLE || '';
 const buy = LINK ? `${LINK}?client_reference_id=${slug}` : '/almanac';
+const bundle = import.meta.env.PUBLIC_ALMANAC_LINK_BUNDLE || '/almanac/';
 const lead = ctx ? leadSentence(ctx) : '';
 const fmt = (n: number, d = 2) =>
   n.toLocaleString('en-US', { minimumFractionDigits: d, maximumFractionDigits: d });
@@ -55,7 +56,7 @@ const fmt = (n: number, d = 2) =>
         convinced by the lead sentence should not have to scroll past a citation to act.
         The provenance still sits directly beneath, for the reader who wants it. */}
     {showCta && (
-      <div class="alm-ctx-cta">
+      <div class="alm-ctx-cta" data-alm-place="lake">
         <a class="alm-ctx-btn" href={buy} rel="nofollow"
            data-alm-cta="lake" data-lake={slug}>
           The full {lake.name} almanac, ${data.priceSingleUsd}
@@ -65,6 +66,13 @@ const fmt = (n: number, d = 2) =>
           tells you how often the lake has been below <em>your</em> ramp or dock elevation.
           Instant download.
         </span>
+        <span class="alm-ctx-more">
+          <a href="/almanac/sample/">See a sample almanac (Lake Powell)</a>
+          <span class="alm-ctx-sep" aria-hidden="true">&middot;</span>
+          <a href={bundle} data-alm-cta="bundle" rel="nofollow">or all {data.lakeCount} lakes
+          for ${data.priceBundleUsd}</a>
+        </span>
+        <span class="alm-ctx-trust">Checkout runs on Stripe under our parent company, BeLikeNative (Autom8 LLC). That name appears on the receipt and card statement.</span>
       </div>
     )}
 
@@ -99,6 +107,9 @@ const fmt = (n: number, d = 2) =>
   .alm-ctx-btn:hover { filter: brightness(1.08); }
   .alm-ctx-micro { font-size: 13px; line-height: 1.55; color: var(--t2);
     flex: 1 1 260px; min-width: 0; }
+  .alm-ctx-more { flex: 1 1 100%; font-size: 13.5px; line-height: 1.55; }
+  .alm-ctx-sep { color: var(--t2); margin: 0 6px; }
+  .alm-ctx-trust { flex: 1 1 100%; font-size: 12.5px; line-height: 1.5; color: var(--t2); }
   @media (max-width: 560px) { .alm-ctx { padding: 17px 18px; } .alm-ctx-btn { width: 100%;
     text-align: center; white-space: normal; } }
 </style>

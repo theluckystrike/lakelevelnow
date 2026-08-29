@@ -55,12 +55,14 @@ const ALMANAC_SINGLE = import.meta.env.PUBLIC_ALMANAC_LINK_SINGLE || '';
           {' '}{almanacData.lakeCount} reservoirs: day-of-year normals, month-by-month
           climatology, and how often your own ramp or dock elevation has been above water.
         </p>
-        <p class="alm-home-cta">
-          <a class="alm-home-btn" href={ALMANAC_SINGLE ? `${ALMANAC_SINGLE}?client_reference_id=${almFeature.slug}` : '/almanac'} rel="nofollow">
+        <p class="alm-home-cta" data-alm-place="home">
+          <a class="alm-home-btn" href={ALMANAC_SINGLE ? `${ALMANAC_SINGLE}?client_reference_id=${almFeature.slug}` : '/almanac'} rel="nofollow" data-lake={almFeature.slug}>
             {almFeature.name} almanac, ${almanacData.priceSingleUsd}
           </a>
-          <a class="alm-home-alt" href="/almanac">See all {almanacData.lakeCount} lakes</a>
+          <a class="alm-home-alt" href="/almanac/">All {almanacData.lakeCount} lakes, ${almanacData.priceBundleUsd} &middot; see a free sample</a>
+          <a class="alm-home-sample" href="/almanac/sample/">Open the sample almanac (Lake Powell)</a>
         </p>
+        <p class="alm-home-trust">Checkout runs on Stripe under our parent company, BeLikeNative (Autom8 LLC). That name appears on the receipt and card statement.</p>
       </section>
     )}
 
@@ -167,6 +169,8 @@ const ALMANAC_SINGLE = import.meta.env.PUBLIC_ALMANAC_LINK_SINGLE || '';
     text-decoration: none; }
   .alm-home-btn:hover { filter: brightness(1.08); }
   .alm-home-alt { font-size: 14px; font-weight: 500; }
+  .alm-home-sample { flex-basis: 100%; font-size: 13.5px; color: var(--t2); }
+  .alm-home-trust { font-size: 12.5px; line-height: 1.5; color: var(--t2); margin: 10px 0 0; }
   @media (max-width: 560px) {
     .alm-home { padding: 18px 18px; }
     .alm-home-btn { width: 100%; text-align: center; }

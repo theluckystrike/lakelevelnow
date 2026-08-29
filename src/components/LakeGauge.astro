@@ -78,6 +78,10 @@ const deltaUp = (reading.delta_24h ?? 0) >= 0;
   </div>
 </div>
 
+{/* Pages may drop one line here, below the reading and the stat grid but above the
+    launch verdict and the trend chart. Renders nothing when no slot content is passed. */}
+<slot name="after-hero" />
+
 <!-- Can I launch? verdict -->
 <div class={`verdict ${launch.ok ? '' : 'warn'}`}>
   <div class="ic">

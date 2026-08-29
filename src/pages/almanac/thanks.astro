@@ -12,6 +12,7 @@
 import BaseLayout from '../../layouts/BaseLayout.astro';
 
 const WORKER = 'https://lake-level-almanac.lipmichal.workers.dev';
+const TEST_WORKER = 'https://lake-level-almanac-test.lipmichal.workers.dev';
 const title = 'Your Lake Level Almanac download';
 const description = 'Download the almanac you just bought. The link is verified against your Stripe receipt and can be re-opened from this page at any time.';
 ---
@@ -71,7 +72,7 @@ const description = 'Download the almanac you just bought. The link is verified 
   .alm-note { font-size: 13.5px; color: var(--t2); margin: 14px 0 0; }
 </style>
 
-<script define:vars={{ WORKER }}>
+<script define:vars={{ WORKER, TEST_WORKER }}>
   (function () {
     var q = new URLSearchParams(location.search);
     var sid = q.get('session_id') || '';
@@ -97,7 +98,10 @@ const description = 'Download the almanac you just bought. The link is verified 
       return;
     }
 
-    fetch(WORKER + '/verify?session_id=' + encodeURIComponent(sid))
+    // Test-mode sessions can only be verified with the test key, which lives only in the
+    // test worker; the test worker serves fixture files, not the product.
+    var base = sid.indexOf('cs_test_') === 0 ? TEST_WORKER : WORKER;
+    fetch(base + '/verify?session_id=' + encodeURIComponent(sid))
       .then(function (r) { return r.json().then(function (j) { return { s: r.status, j: j }; }); })
       .then(function (res) {
         var j = res.j;
@@ -114,6 +118,8 @@ const description = 'Download the almanac you just bought. The link is verified 
             (kb ? kb + ' · ' : '') + 'this link expires in 30 minutes · reopen this page for a new one'
             + (j.downloadsAllowed ? ' · ' + j.downloadsUsed + ' of ' + j.downloadsAllowed + ' used' : '');
           show('ok');
+          if (window.__almHit) window.__almHit('thanks_ok',
+            j.sku === 'bundle' ? 'bundle' : String(j.slug || j.lake || ''), 'thanks');
           return;
         }
         var e = (j && j.error) || 'unknown';

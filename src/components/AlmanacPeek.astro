@@ -1,0 +1,30 @@
+---
+// One-line almanac peek for a lake page: the day-of-year sentence and a text link to the
+// paid almanac. Sits directly below the gauge and stat grid, never above the live reading.
+// 67.6% of clicks are mobile, and the full block below starts around screen two; this puts
+// the answer and a link on screen one. Renders nothing when the lake has no long record.
+import { leadSentence, PRICE_SINGLE } from '../lib/almanac';
+import type { AlmanacContext } from '../lib/almanac';
+
+interface Props { slug: string; name: string; alm: AlmanacContext | null; }
+const { slug, name, alm } = Astro.props;
+const SINGLE = import.meta.env.PUBLIC_ALMANAC_LINK_SINGLE || '';
+const href = SINGLE ? `${SINGLE}?client_reference_id=${slug}` : '/almanac/';
+---
+
+{alm && (
+  <p class="alm-peek">
+    {leadSentence(alm)}
+    {' '}<a href={href} data-alm-cta="lake" data-lake={slug} data-alm-place="lake-top"
+      rel="nofollow">Full {name} almanac, ${PRICE_SINGLE} &rarr;</a>
+    {' '}<a class="alm-peek-more" href={`#alm-h-${slug}`}>what is in it</a>
+  </p>
+)}
+
+<style>
+  .alm-peek { margin: 12px 0 0; padding: 3px 10px; border-left: 3px solid var(--teal);
+    font-size: 14px; line-height: 1.28; color: var(--t1); max-width: 70ch; }
+  .alm-peek a { font-weight: 600; }
+  .alm-peek a.alm-peek-more { font-weight: 500; font-size: 13px; color: var(--t2);
+    margin-left: 4px; white-space: nowrap; }
+</style>

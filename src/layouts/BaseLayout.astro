@@ -29,6 +29,36 @@ const ld = [organizationLd(), websiteLd(), ...jsonLd];
       noindex={noindex}
       jsonLd={ld}
     />
+    {/* Almanac funnel beacon. Fire-and-forget GETs to the fulfilment Worker; it never
+        blocks navigation and it sends nothing but an event name, a lake slug and a
+        placement token. The Worker only counts hits whose Referer is this site. */}
+    <script is:inline>
+      (function () {
+        var B = 'https://lake-level-almanac.lipmichal.workers.dev/hit';
+        var ok = /^[a-z0-9-]{0,40}$/;
+        function tok(v) { v = String(v || ''); return ok.test(v) ? v : ''; }
+        function hit(e, l, p) {
+          var u = B + '?e=' + e + '&l=' + tok(l) + '&p=' + tok(p);
+          try { fetch(u, { method: 'GET', keepalive: true, mode: 'no-cors' }).catch(function () {}); }
+          catch (_) { /* no fetch: the hit is dropped, the page is not */ }
+        }
+        window.__almHit = hit;
+        var path = location.pathname.replace(/\/+$/, '');
+        if (path === '/almanac') hit('alm_view', '', '');
+        if (path === '/almanac/thanks') hit('thanks_view', '', '');
+        document.addEventListener('click', function (ev) {
+          var t = ev.target; if (!t || !t.closest) return;
+          var w = t.closest('[data-alm-place]');
+          var p = w ? w.getAttribute('data-alm-place') : '';
+          var pick = t.closest('a[data-alm-pick]');
+          if (pick) { hit('cta_click', 'single', pick.getAttribute('data-alm-pick')); return; }
+          var a = t.closest('a[data-alm-buy],a[data-alm-cta],.alm-home-btn');
+          if (!a || (a.getAttribute('href') || '').indexOf('https://buy.stripe.com') !== 0) return;
+          var m = /client_reference_id=([a-z0-9-]{1,40})/.exec(a.href);
+          hit('checkout_open', a.getAttribute('data-lake') || (m ? m[1] : 'bundle'), p);
+        }, true);
+      })();
+    </script>
   </head>
   <body>
     <a class="skip" href="#main">Skip to content</a>

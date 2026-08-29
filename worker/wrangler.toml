@@ -1,0 +1,42 @@
+name = "lake-level-almanac"
+main = "src/index.js"
+compatibility_date = "2026-08-01"
+workers_dev = true
+tsconfig = "tsconfig.json"
+
+# Secrets SIGNING_KEY and STRIPE_SECRET_KEY live in the dashboard and are
+# preserved across deploys (wrangler keeps secret_text bindings not listed here).
+
+[[kv_namespaces]]
+binding = "ALMANAC_ASSETS"
+id = "b846f43c1ccd410e863eed51cf7ab7d8"
+
+[[kv_namespaces]]
+binding = "ALMANAC_ORDERS"
+id = "bd1eb77d66e24161bd8997381ba856de"
+
+[vars]
+ALLOWED_ORIGINS = "https://lakelevelnow.com,http://localhost:4321,http://localhost:4322"
+ALMANAC_MODE = "live"
+# Comma-separated: new $79 link first, old $49 link stays until the site deploys.
+LINK_BUNDLE_ID = "plink_1U9ZakJKCamubEm1QrZZtgog,plink_1U1veYJKCamubEm1TwmO7yDa"
+LINK_SINGLE_ID = "plink_1U1veWJKCamubEm1PGbmVIAx"
+
+# ---- TEST twin: Stripe TEST mode + dummy fixture zips (never the real product).
+[env.test]
+name = "lake-level-almanac-test"
+workers_dev = true
+
+[[env.test.kv_namespaces]]
+binding = "ALMANAC_ASSETS"
+id = "befded96e5634a86897a6d2e02b086ac"
+
+[[env.test.kv_namespaces]]
+binding = "ALMANAC_ORDERS"
+id = "c4a151a2dd1a46eea2c84552d5ec2165"
+
+[env.test.vars]
+ALLOWED_ORIGINS = "https://lakelevelnow.com,http://localhost:4321,http://localhost:4322"
+ALMANAC_MODE = "test"
+LINK_SINGLE_ID = "plink_1U9ZnuJKCamubEm1214M88PV"
+LINK_BUNDLE_ID = "plink_1U9ZnwJKCamubEm1VQO8LYi3"

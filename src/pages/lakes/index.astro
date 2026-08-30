@@ -20,6 +20,9 @@ const toneHex = (t: string) => t === 'red' ? '#bb5a37' : t === 'amber' ? '#b07d1
     {Object.entries(states).sort((a,b)=>stateName(a[0]).localeCompare(stateName(b[0]))).map(([code, lakes]) => (
       <section class="section" id={code}>
         <h2 style="margin-bottom:16px;">{stateName(code)} <span class="mut" style="font-size:.7em;font-weight:500;">({lakes.length})</span></h2>
+        {code === 'CA' && (
+          <p class="mut" style="font-size:13px;margin:-8px 0 14px;max-width:660px;">Every reservoir in CDEC's daily storage summary, each ranked against its own record for the date, are on the <a href="/california-lake-levels/">California lake levels</a> page.</p>
+        )}
         <div class="table-wrap">
           <table>
             <thead><tr><th>Lake</th><th>River</th><th>Operator</th><th class="num">Level</th><th>Status</th></tr></thead>

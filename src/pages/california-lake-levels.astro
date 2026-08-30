@@ -1,0 +1,464 @@
+---
+// /california-lake-levels/ — every reservoir in CDEC's Daily Reservoir Storage Summary,
+// ranked two ways: against its own concrete rim (percent of capacity) and against its own
+// storage record for the same calendar day (a day-of-year percentile).
+//
+// EVERY figure on this page is server-rendered in this frontmatter from reservoirRows() /
+// reservoirSummary(). The client script below only re-orders and filters rows that are
+// already complete in the served HTML. There is no JSON island and no client-side render:
+// a reader with JavaScript off sees the full answer and all 48 rows.
+import BaseLayout from '../layouts/BaseLayout.astro';
+import { reservoirRows, reservoirSummary, type ReservoirRow } from '../lib/careservoirs';
+import { parseAsOf } from '../lib/almanac';
+import { authorLd, breadcrumbLd, absUrl } from '../lib/seo';
+import { AUTHOR, SITE } from '../consts';
+import ladderData from '../data/ca-ladders.json';
+
+const PATH = '/california-lake-levels/';
+const CDEC = 'https://cdec.water.ca.gov/';
+const CDEC_RES = 'https://cdec.water.ca.gov/reportapp/javareports?name=RES';
+const CDEC_ORO = 'https://cdec.water.ca.gov/dynamicapp/staMeta?station_id=ORO';
+const CDEC_CCH = 'https://cdec.water.ca.gov/dynamicapp/staMeta?station_id=CCH';
+const CDEC_ORO_DAILY = 'https://cdec.water.ca.gov/dynamicapp/QueryDaily?s=ORO';
+const CDEC_ORO_PROF = 'https://cdec.water.ca.gov/dynamicapp/profile?s=ORO&type=res';
+const CDEC_WS = 'https://cdec.water.ca.gov/dynamicapp/wsSensorData';
+const USGS_STATS = 'https://waterdata.usgs.gov/statistics-documentation/';
+const USGS_BLOG = 'https://waterdata.usgs.gov/blog/wdfn-stats-delivery/';
+const USBR_SNOW = 'https://www.usbr.gov/gp/hydromet/snow_res_info.html';
+const USBR_GLOSS = 'https://www.usbr.gov/projects/glossary.php';
+const P62614 = 'https://api.waterdata.usgs.gov/ogcapi/v0/collections/parameter-codes/items?id=62614&f=json';
+const P62615 = 'https://api.waterdata.usgs.gov/ogcapi/v0/collections/parameter-codes/items?id=62615&f=json';
+const P00054 = 'https://api.waterdata.usgs.gov/ogcapi/v0/collections/parameter-codes/items?id=00054&f=json';
+
+const rows = reservoirRows();
+const summary = reservoirSummary(rows);
+const MIN_OBS_PER_DAY = ladderData.meta.minObsPerDay as number;
+
+// ---- formatting, build time only -------------------------------------------------------
+const NF = new Intl.NumberFormat('en-US');
+function af(v: number | null): string {
+  return v == null ? 'not published' : `${NF.format(Math.round(v))} AF`;
+}
+function pct(v: number | null): string {
+  return v == null ? 'not published' : `${Math.round(v * 10) / 10}%`;
+}
+function ft(v: number | null): string {
+  return v == null ? 'not published' : `${NF.format(Math.round(v * 100) / 100)} ft`;
+}
+function ordinal(n: number): string {
+  const v = Math.round(n);
+  const r = v % 100;
+  if (r >= 11 && r <= 13) return `${v}th`;
+  const s = ['th', 'st', 'nd', 'rd'];
+  return `${v}${s[v % 10] || 'th'}`;
+}
+function longDate(iso: string): string {
+  const d = parseAsOf(iso);
+  if (!d) return iso;
+  return d.toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric', timeZone: 'UTC' });
+}
+const asOfDate = parseAsOf(summary.asOf);
+const monthName = asOfDate
+  ? asOfDate.toLocaleDateString('en-US', { month: 'long', timeZone: 'UTC' })
+  : 'that';
+// "an August day", not "a August day".
+const monthArticle = /^[AEIOU]/.test(monthName) ? 'an' : 'a';
+const monthPhrase = `${monthArticle} ${monthName} day`;
+
+// ---- the answer, all derived from rows/summary ------------------------------------------
+const ranked = rows.filter((r) => r.pctCapacity != null);
+const fullest = ranked.length ? ranked[0] : null;                       // rows arrive fullest-first
+const emptiest = ranked.length ? ranked[ranked.length - 1] : null;
+const withLadder = rows.filter((r) => r.hasLadder).length;
+const noLadder = rows.length - withLadder;
+const noStorage = rows.filter((r) => r.storageAf == null).length;
+const comparable = rows.filter((r) => r.pctCapacity != null && r.percentile != null);
+const byPercentile = comparable.slice().sort((a, b) => (a.percentile as number) - (b.percentile as number));
+const lowest = byPercentile.length ? byPercentile[0] : null;
+const dis = summary.biggestDisagreement;
+const rho = summary.spearman == null ? null : (Math.round(summary.spearman * 100) / 100).toFixed(2);
+
+// ---- per-row display strings, computed once ---------------------------------------------
+type Cell = { text: string; sub: string; dir: 'up' | 'down' | 'flat' | 'none' };
+function changeCell(r: ReservoirRow): Cell {
+  const v = r.storageChangeAf;
+  if (v == null) return { text: '—', sub: 'not published', dir: 'none' };
+  if (v === 0) return { text: '0 AF', sub: 'unchanged', dir: 'flat' };
+  const signed = `${v > 0 ? '+' : '−'}${NF.format(Math.abs(Math.round(v)))} AF`;
+  return v > 0
+    ? { text: `▲ ${signed}`, sub: 'rising', dir: 'up' }
+    : { text: `▼ ${signed}`, sub: 'falling', dir: 'down' };
+}
+function standing(r: ReservoirRow): string {
+  if (!r.hasLadder) return 'record too short to rank';
+  if (r.percentile == null) {
+    return r.storageAf == null
+      ? 'no storage published for this date'
+      : 'no ladder for this calendar day';
+  }
+  return `${ordinal(r.percentile)} percentile for ${monthPhrase}, over ${r.recordYears} years of record`;
+}
+function vsMedian(r: ReservoirRow): string {
+  const v = r.vsMedianAf;
+  if (v == null) return 'not published';
+  if (v === 0) return 'at its median';
+  return `${af(Math.abs(v))} ${v < 0 ? 'below' : 'above'} its median`;
+}
+const BAND_KEY: Record<string, string> = {
+  'much-lower': 'lo', lower: 'lo2', normal: 'mid', higher: 'hi2', 'much-higher': 'hi',
+};
+function pill(r: ReservoirRow): { t: string; b: string } {
+  if (!r.hasLadder || r.percentile == null || r.bandLabel == null || r.band == null) {
+    return { t: 'no long record', b: 'no' };
+  }
+  return { t: r.bandLabel, b: BAND_KEY[r.band] || 'mid' };
+}
+
+const title = 'California lake levels';
+const description =
+  'Every reservoir in the California Data Exchange Center daily storage summary, with percent of capacity and a day-of-year storage percentile against each reservoir own record.';
+
+// ---- JSON-LD. Every date below equals a date printed on the page. ------------------------
+const crumbs = {
+  ...breadcrumbLd([{ name: 'Home', path: '/' }, { name: 'California lake levels', path: PATH }]),
+  '@id': `${absUrl(PATH)}#breadcrumb`,
+};
+const person = { ...authorLd(), '@id': `${absUrl(PATH)}#author` };
+const webPageLd = {
+  '@context': 'https://schema.org',
+  '@type': 'WebPage',
+  '@id': absUrl(PATH),
+  url: absUrl(PATH),
+  name: title,
+  description,
+  breadcrumb: { '@id': `${absUrl(PATH)}#breadcrumb` },
+  isPartOf: { '@type': 'WebSite', name: SITE.name, url: absUrl('/') },
+  dateModified: summary.asOf,
+  mainEntity: { '@id': `${absUrl(PATH)}#dataset` },
+  speakable: { '@type': 'SpeakableSpecification', cssSelector: ['h1', '.qas'] },
+};
+const articleLd = {
+  '@context': 'https://schema.org',
+  '@type': 'Article',
+  '@id': `${absUrl(PATH)}#article`,
+  headline: title,
+  description,
+  isPartOf: { '@id': absUrl(PATH) },
+  mainEntityOfPage: absUrl(PATH),
+  datePublished: summary.asOf,
+  dateModified: summary.asOf,
+  author: { '@id': `${absUrl(PATH)}#author` },
+  publisher: { '@type': 'Organization', name: SITE.name, url: absUrl('/') },
+  about: [
+    'California reservoir storage',
+    'day-of-year storage percentile',
+    'percent of capacity',
+    'California Data Exchange Center',
+  ],
+};
+const datasetLd = {
+  '@context': 'https://schema.org',
+  '@type': 'Dataset',
+  '@id': `${absUrl(PATH)}#dataset`,
+  name: 'California reservoir storage compared with its own day-of-year record',
+  description:
+    'Percent of capacity and a day-of-year storage percentile for every reservoir in the California Data Exchange Center daily reservoir storage summary, recomputed in code from the agency archive.',
+  url: absUrl(PATH),
+  creator: {
+    '@type': 'GovernmentOrganization',
+    name: 'California Data Exchange Center, California Department of Water Resources',
+    url: CDEC,
+  },
+  spatialCoverage: { '@type': 'Place', name: 'California' },
+  temporalCoverage: `${summary.earliestRecordStart}/${summary.asOf}`,
+  variableMeasured: [
+    { '@type': 'PropertyValue', name: 'reservoir storage', unitText: 'acre-feet' },
+    { '@type': 'PropertyValue', name: 'reservoir capacity', unitText: 'acre-feet' },
+    { '@type': 'PropertyValue', name: 'percent of capacity', unitText: 'percent' },
+    { '@type': 'PropertyValue', name: '24-hour storage change', unitText: 'acre-feet' },
+    { '@type': 'PropertyValue', name: 'day-of-year storage percentile', unitText: 'percentile' },
+    { '@type': 'PropertyValue', name: 'acre-feet from the day-of-year median', unitText: 'acre-feet' },
+  ],
+  isBasedOn: CDEC_RES,
+  license: CDEC,
+  dateModified: summary.asOf,
+  isAccessibleForFree: true,
+};
+const ld = [crumbs, person, webPageLd, articleLd, datasetLd];
+---
+<BaseLayout title={title} description={description} path={PATH} jsonLd={ld}>
+  <article class="container">
+
+    <section class="hero" style="padding-bottom:0;">
+      <p class="section-k">California reservoirs</p>
+      <h1>California lake levels</h1>
+      <p class="lead">Every reservoir in the California Data Exchange Center's daily storage summary, with how full each one is and how unusual that is for this calendar day, measured against its own storage record.</p>
+      <p class="byline">By <a href={AUTHOR.url}>{AUTHOR.name}</a>, independent developer and sole operator of {SITE.name}. Readings dated {summary.asOfLabel}.</p>
+    </section>
+
+    <section class="section">
+      <p class="section-k">The answer</p>
+      <h2 class="section-h">Where the state's reservoirs stand</h2>
+      <p class="qas">The daily reservoir storage summary carries {summary.stations} reservoirs, and every reading below is dated {summary.asOfLabel}. Together they hold {af(summary.totalStorageAf)} against {af(summary.totalCapacityAf)} of stated capacity, which is {pct(summary.statewidePctCapacity)} of capacity. CDEC, <a href={CDEC}>managed by the California Department of Water Resources</a>, publishes that <a href={CDEC_RES}>Daily Reservoir Storage Summary covering selected reservoirs in Northern and Southern California</a>, and <a href={CDEC_RES}>AF in it means acre-feet, the unit the summary reports storage and capacity in</a>.</p>
+      <p class="qas">Measured against their own storage record for this calendar day, {summary.belowMedian} reservoirs sit below their median for the date and {summary.aboveMedian} sit at or above it. Of the rest, {noLadder} {noLadder === 1 ? 'has' : 'have'} a record too short to rank, and CDEC published no storage figure for {noStorage} more on this date. The fullest by percent of capacity is {fullest ? `${fullest.name} at ${pct(fullest.pctCapacity)} of capacity` : 'not published'}, and the emptiest is {emptiest ? `${emptiest.name} at ${pct(emptiest.pctCapacity)} of capacity` : 'not published'}. Furthest below its own normal for the date is {lowest ? `${lowest.name}, at the ${ordinal(lowest.percentile as number)} percentile of its own record for ${monthPhrase}` : 'not published'}. Those are two different questions, and the table lets you switch between them.</p>
+    </section>
+
+    <section class="section">
+      <p class="section-k">The table</p>
+      <h2 class="section-h">Every reservoir in the daily summary</h2>
+
+      <div class="ll-tool">
+        <div>
+          <label for="ll-q">Filter by reservoir or county</label>
+          <input id="ll-q" type="search" placeholder="reservoir or county" autocomplete="off" />
+        </div>
+        <div>
+          <label for="ll-sort">Sort</label>
+          <select id="ll-sort">
+            <option value="pct">percent of capacity</option>
+            <option value="below">furthest below its own normal for the date</option>
+            <option value="cap">largest by capacity</option>
+            <option value="name">name</option>
+          </select>
+        </div>
+        <fieldset class="ll-toggle">
+          <legend>Rank by</legend>
+          <label><input type="radio" name="llrank" value="cap" checked /> rank by percent of capacity</label>
+          <label><input type="radio" name="llrank" value="norm" /> rank by percent of its own normal</label>
+        </fieldset>
+      </div>
+      <p class="ll-note" id="ll-count" aria-live="polite">{rows.length} of {rows.length} reservoirs shown, ranked by percent of capacity</p>
+
+      <div class="ll-wrap">
+        <table>
+          <caption>Reservoir storage, percent of capacity and day-of-year standing for every reservoir in <a href={CDEC_RES}>CDEC's daily reservoir storage summary</a>. Storage and capacity in acre-feet. Elevation is a reading at that station only and is not compared between reservoirs.</caption>
+          <thead>
+            <tr>
+              <th scope="col">Reservoir</th>
+              <th scope="col">County</th>
+              <th scope="col">Storage / capacity</th>
+              <th scope="col">Percent of capacity</th>
+              <th scope="col">24-hour change</th>
+              <th scope="col">Against its own record for this date</th>
+              <th scope="col">Acre-feet from its median</th>
+              <th scope="col">Status</th>
+            </tr>
+          </thead>
+          <tbody id="ll-body">
+            {rows.map((r) => {
+              const c = changeCell(r);
+              const p = pill(r);
+              return (
+                <tr
+                  data-name={r.name.toLowerCase()}
+                  data-county={(r.county || '').toLowerCase()}
+                  data-pct={r.pctCapacity == null ? '' : String(r.pctCapacity)}
+                  data-pctl={r.percentile == null ? '' : String(r.percentile)}
+                  data-cap={String(r.capacityAf)}
+                >
+                  <th scope="row">
+                    {r.lakePath ? <a href={r.lakePath}>{r.name}</a> : <span>{r.name}</span>}
+                    <span class="sub">{r.operator}</span>
+                    <span class="sub n">{ft(r.elevationFt)} · {summary.asOfLabel} · CDEC</span>
+                  </th>
+                  <td>{r.county || 'not published'}</td>
+                  <td class="n">{af(r.storageAf)}<span class="sub">of {af(r.capacityAf)}</span></td>
+                  <td class="n">{pct(r.pctCapacity)}</td>
+                  <td class={`n chg-${c.dir}`}>{c.text}<span class="sub">{c.sub}</span></td>
+                  <td>{standing(r)}</td>
+                  <td class="n">{vsMedian(r)}</td>
+                  <td><span class="pill" data-b={p.b}>{p.t}</span></td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+      </div>
+      <p class="ll-note" id="ll-empty" hidden>No reservoir matches that filter.</p>
+      <p class="ll-note">Operators differ across the feed. <a href={CDEC_ORO}>Oroville Dam is operated and maintained by the California Department of Water Resources</a>, while <a href={CDEC_CCH}>Cachuma Lake (Bradbury Dam) is operated and maintained by the US Bureau of Reclamation, so the reservoirs carried on the CDEC feed are not all run by the same operator</a>.</p>
+    </section>
+
+    <section class="section">
+      <p class="section-k">The argument</p>
+      <h2 class="section-h">Why the two rankings disagree</h2>
+      <p>Flip the toggle and the order changes. Percent of capacity measures water against concrete. The percentile measures water against that reservoir's own history for the same calendar day. A reservoir can look middling on one and remarkable on the other.</p>
+      {rho && (
+        <p>Across the {comparable.length} reservoirs that can be ranked both ways, the two orderings carry a Spearman rank correlation of {rho}. Read that as how far the two orderings diverge, not as a p-value, because CDEC prints percent of capacity as a whole number and ties are common.</p>
+      )}
+      {dis && (
+        <p>Take {dis.name}. Among the {comparable.length} reservoirs with a long enough record it ranks {ordinal(dis.rankByPctCapacity)} by percent of capacity, at {pct(dis.pctCapacity)} of capacity, and {ordinal(dis.rankByPercentile)} by where it sits in its own record for the date, at the {ordinal(dis.percentile)} percentile for {monthPhrase}.</p>
+      )}
+      <p>Both columns divide the same series, reservoir storage in acre-feet, so the disagreement is real and not an artifact of units. Feet would not allow that comparison. <a href={P62614}>USGS keeps one parameter for lake or reservoir water surface elevation defined against the NGVD 1929 datum, reported in feet</a>, and <a href={P62615}>a separate parameter for water surface elevation referenced to NAVD 1988, so surface elevations at different sites can be stated against different vertical datums</a>. <a href={P00054}>Storage is its own parameter measured in acre-feet, distinct from any water surface elevation parameter</a>, and <a href={CDEC_ORO}>CDEC records reservoir elevation in feet as a distinct sensor from reservoir storage in acre-feet at the same station</a>. So elevation appears in the table as one station's reading with its own date, and never as a subtraction between two reservoirs.</p>
+      <p>Percent of capacity is the familiar view for a reason. <a href={USBR_SNOW}>Reclamation describes percent of total capacity as the percentage of total storage capacity used by the water currently stored in the reservoir</a>, and CDEC publishes that column, <a href={CDEC_RES}>expressing current storage as a percentage of the reservoir's stated capacity under a heading of % of Capacity</a>. Capacity itself is a defined quantity. <a href={USBR_GLOSS}>Reclamation defines total capacity as the reservoir capacity below the highest of the top of exclusive flood control capacity, the top of joint use capacity, or the top of active conservation capacity, used to express the total quantity of water that can be impounded</a>, and <a href={USBR_GLOSS}>joint use capacity as reservoir capacity assigned to flood control purposes during certain periods of the year and to conservation purposes during other periods of the year</a>.</p>
+      <p>CDEC also publishes its own comparison against normal, <a href={CDEC_RES}>an Average Storage figure for each reservoir with a separate % of Average column computed against it</a>. That average runs over a fixed window, and <a href={CDEC_ORO_PROF}>each reservoir's CDEC information page states the base period used for its published averages as a start year and an end year</a>. A different window gives a different answer, which is why we show a rank over the whole daily record instead. CDEC's average column is not a percentile rank and we do not present it as one. Other operators frame it differently again: <a href={USBR_SNOW}>Reclamation's percent of daily historical average compares the amount of water currently stored with historical levels on the same date, using a stated multi-year base period rather than a rank within the record</a>.</p>
+    </section>
+
+    <section class="section">
+      <p class="section-k">How we know</p>
+      <h2 class="section-h">Methodology</h2>
+      <p>Every figure here comes out of one series. <a href={CDEC}>CDEC publishes reservoir storage at daily resolution, described by the agency as updated daily</a>, and we pull the same sensor data through <a href={CDEC_WS}>CDEC's web service, which returns CSV or JSON</a>. Numbers are recomputed in code at build time from the file that pipeline writes. Nothing on this page is typed by hand.</p>
+      <p>The ladder is what makes the second measure possible. For one reservoir and one numeric day of the year we take every daily storage value in its archive for that day, sort them, and read where the current value falls. <a href={USGS_STATS}>USGS defines a percentile as indicating the relative standing of a data value when data are sorted into numerical order from smallest to largest</a>, and <a href={USGS_STATS}>calculates its day-of-year statistics from all approved historic observations for a single numeric day of the year</a>. <a href={USGS_BLOG}>USGS provides those statistics for a specific calendar date at a monitoring location, computed over that location's own period of record</a>. Ours holds {NF.format(summary.observations)} daily observations across {summary.stations} stations, of which {withLadder} have enough history for a ladder. The earliest record starts {longDate(summary.earliestRecordStart)} and the longest runs {summary.longestRecordYears} years. Below {MIN_OBS_PER_DAY} observations for a calendar day, the row gets no percentile.</p>
+      <p>We compare against the median rather than the average because <a href={USGS_STATS}>USGS notes the mean is less resistant to changes in the magnitudes of outlying observations than the median</a>. <a href={USGS_STATS}>The median is the middle value in a data set when the values are arranged in ascending or descending order</a>, so the acre-feet column in the table is the gap between today's storage and that middle value.</p>
+      <p>Now the limits. <a href={USGS_STATS}>USGS calculates its published statistics from approved data only</a> and <a href={USGS_STATS}>excludes provisional data from those calculations</a>, while <a href={CDEC_ORO_DAILY}>CDEC labels its published station data as provisional and subject to change</a>. Read the percentile here as a rank computed over a provisional archive, not as an approved statistic. <a href={CDEC_ORO}>Storage at Oroville is derived from a reservoir capacity rating curve rather than measured directly, and CDEC recalculated that curve so that storage values from a stated date forward are calculated using the new rating curve</a>, so a long ladder mixes values computed under different curves and we make no adjustment for it.</p>
+      <p>I wrote the pipeline behind this table, scripts/fetch-levels.mjs, against keyless government feeds, with a hard timeout and a bounded retry on every call and carry-forward so an upstream outage never blanks a row. The feed label normalizer in src/lib/lakes.ts exists because an uppercase string match on CDEC had been mislabelling every California and Reclamation lake as USGS in the on-page source chain and in the schema. I found that by reading the source chain on a page I had already shipped, and fixed it in code rather than in the copy.</p>
+    </section>
+
+    <section class="section">
+      <h2 class="section-h">How often these numbers change</h2>
+      <p><a href={CDEC}>CDEC describes its reservoir storage series as updated daily</a>, and <a href={CDEC_RES}>the values in its daily reservoir summary are for a period ending at midnight, so the published table is a dated daily summary rather than an instantaneous reading</a>. The date at the top of this page is the date of the readings, not the day you happen to be reading it.</p>
+
+      <h2 class="section-h">What the reading date means</h2>
+      <p>Readings come from the operating agency's own gage and carry that agency's timestamp. Anything older than seven days is labelled delayed and is never called live. Each row shows its own reading date and its feed, taken from the data rather than assumed, and <a href={CDEC_ORO_DAILY}>CDEC warns that its station data are preliminary and subject to revision</a>, so a figure can move after publication.</p>
+
+      <h2 class="section-h">Why some reservoirs carry no percentile</h2>
+      <p>A ladder needs enough history for one calendar day. Where a station's archive is too thin, the row still shows storage, capacity, percent of capacity and elevation, and says the record is too short to rank instead of guessing. <a href={USGS_STATS}>USGS imposes no minimum amount of data for a statistic to be calculated, and reports the number of observations used alongside the statistic</a>. We set a floor instead. Record starts also differ by station, and <a href={CDEC_CCH}>CDEC's daily reservoir elevation record for Cachuma Lake begins later than the start of the Oroville daily elevation record</a>.</p>
+
+      <h2 class="section-h">What a percentile does not tell you about a day at the water</h2>
+      <p>A percentile is a position in a sorted list and nothing more. <a href={USGS_STATS}>USGS describes day-of-year statistics as representing the expected conditions for a generic day of the year at a location, based on approved historical observations</a>. We do not turn a low rank into a verdict about launching, boating or drought conditions. Not navigation, safety, or engineering advice. Estimates from public gage data. A ramp read is a level-based guide, not a guarantee. Confirm with the lake operator or the managing agency before travelling.</p>
+
+      <h2 class="section-h">Where to see one lake's whole record</h2>
+      <p>Each reservoir in the table links to its own page where we hold one, and those pages carry the single-lake question. This page does the part no single-lake page can, which is put every reservoir the agency reports on the same ladder for the same day.</p>
+
+      <a class="ll-card" href="/almanac/">
+        <strong>Almanac</strong>
+        <span class="sub">One lake's full daily record, day by day, with the ladder behind every rank.</span>
+      </a>
+
+      <div class="src-foot">
+        <span class="src-badge">CDEC</span>
+        <span class="stamp">updated {summary.asOfLabel}</span>
+      </div>
+    </section>
+
+  </article>
+
+  <script is:inline>
+    // Progressive enhancement only. Every row is already in the HTML with every figure
+    // rendered; this filters and re-orders the existing DOM nodes and never builds one.
+    // NASA Power of 10: bounded loops, asserted preconditions, fail closed.
+    (function () {
+      'use strict';
+      var MAX_ROWS = 500; // the roster is 48; this bounds every sweep below
+
+      var body = document.getElementById('ll-body');
+      var qi = document.getElementById('ll-q');
+      var ss = document.getElementById('ll-sort');
+      var out = document.getElementById('ll-count');
+      var empty = document.getElementById('ll-empty');
+      if (!body || !qi || !ss || !out || !empty) return; // never bind a half-wired widget
+
+      var all = Array.prototype.slice.call(body.querySelectorAll('tr'), 0, MAX_ROWS);
+      if (all.length === 0) return;
+
+      function num(el, key) {
+        var raw = el.getAttribute(key);
+        if (raw === null || raw === '') return null;
+        var n = Number(raw);
+        return isFinite(n) ? n : null;
+      }
+      function text(el, key) { return el.getAttribute(key) || ''; }
+
+      // Nulls always sink, whichever direction the comparison runs.
+      function cmp(a, b, key, desc) {
+        var x = num(a, key), y = num(b, key);
+        if (x === null && y === null) return 0;
+        if (x === null) return 1;
+        if (y === null) return -1;
+        return desc ? y - x : x - y;
+      }
+
+      var q = '', sortMode = 'pct', rankMode = 'cap';
+
+      function apply() {
+        var shown = [];
+        for (var i = 0; i < all.length && i < MAX_ROWS; i++) {
+          var row = all[i];
+          var hay = text(row, 'data-name') + ' ' + text(row, 'data-county');
+          var hit = q === '' || hay.indexOf(q) > -1;
+          row.hidden = !hit;
+          if (hit) shown.push(row);
+        }
+
+        var mode = sortMode;
+        // The toggle is the page's argument. "Percent of its own normal" reorders by the
+        // day-of-year percentile, highest first, so the top of one list can be compared
+        // against the top of the other.
+        if (mode === 'pct' && rankMode === 'norm') mode = 'norm';
+
+        shown.sort(function (a, b) {
+          if (mode === 'pct') return cmp(a, b, 'data-pct', true);
+          if (mode === 'norm') return cmp(a, b, 'data-pctl', true);
+          if (mode === 'below') return cmp(a, b, 'data-pctl', false);
+          if (mode === 'cap') return cmp(a, b, 'data-cap', true);
+          return text(a, 'data-name').localeCompare(text(b, 'data-name'));
+        });
+
+        var frag = document.createDocumentFragment();
+        for (var j = 0; j < shown.length && j < MAX_ROWS; j++) frag.appendChild(shown[j]);
+        body.appendChild(frag);
+
+        empty.hidden = shown.length > 0;
+        out.textContent = shown.length + ' of ' + all.length + ' reservoirs shown, ' +
+          (rankMode === 'cap'
+            ? 'ranked by percent of capacity'
+            : 'ranked by where each reservoir sits in its own record for the date');
+      }
+
+      qi.addEventListener('input', function () { q = this.value.trim().toLowerCase(); apply(); });
+      ss.addEventListener('change', function () { sortMode = this.value; apply(); });
+      var radios = document.querySelectorAll('[name=llrank]');
+      for (var k = 0; k < radios.length && k < 8; k++) {
+        radios[k].addEventListener('change', function () { rankMode = this.value; apply(); });
+      }
+    })();
+  </script>
+
+  <style>
+    .section-h { font-size: 20px; font-weight: 700; letter-spacing: -.02em; margin-bottom: 10px; }
+    .section-k { font-size: 11px; font-weight: 600; color: var(--teal); text-transform: uppercase; letter-spacing: .07em; margin-bottom: 4px; }
+    .hero .section-k { margin-bottom: 10px; }
+    .byline { font-size: 13px; color: var(--t2); margin-top: 12px; }
+    article.container p { max-width: 68ch; font-size: 15px; line-height: 1.65; }
+    p.qas { color: var(--ink); font-weight: 500; }
+
+    .ll-tool { display: flex; flex-wrap: wrap; gap: .75rem; align-items: flex-end; margin: 1.25rem 0 .5rem; }
+    .ll-tool label { display: block; font-size: .85rem; color: var(--t2); margin-bottom: .25rem; }
+    .ll-tool input, .ll-tool select { background: var(--card); border: 1px solid var(--border); border-radius: var(--r); padding: .5rem .65rem; color: var(--ink); font: inherit; max-width: 100%; }
+    .ll-toggle { border: 1px solid var(--border); border-radius: var(--r); padding: .4rem .65rem; background: var(--card); margin: 0; }
+    .ll-toggle legend { font-size: .85rem; color: var(--t2); padding: 0 .35rem; }
+    .ll-toggle label { display: inline-block; margin-right: .75rem; color: var(--ink); font-size: .9rem; }
+
+    .ll-wrap { overflow-x: auto; border: 1px solid var(--border); border-radius: var(--r); background: var(--card); max-width: 100%; }
+    .ll-wrap table { border-collapse: collapse; width: 100%; font-size: .92rem; }
+    .ll-wrap caption { text-align: left; padding: .85rem; color: var(--t2); font-size: .88rem; line-height: 1.5; }
+    .ll-wrap th, .ll-wrap td { padding: .55rem .7rem; border-bottom: 1px solid var(--border-soft); text-align: left; vertical-align: top; color: var(--ink); }
+    .ll-wrap thead th { background: var(--card); border-bottom: 1px solid var(--border); font-size: .74rem; text-transform: uppercase; letter-spacing: .04em; color: var(--t2); }
+    .ll-wrap tbody th[scope='row'] { font-weight: 600; min-width: 12rem; }
+    .ll-wrap td.n, .ll-wrap .n { white-space: nowrap; font-variant-numeric: tabular-nums; }
+    .ll-wrap .sub { display: block; font-weight: 400; font-size: .76rem; color: var(--t3); white-space: normal; }
+    .ll-wrap .chg-up { color: var(--teal); }
+    .ll-wrap .chg-down { color: var(--burnt); }
+    .ll-wrap .chg-flat, .ll-wrap .chg-none { color: var(--t3); }
+
+    .pill { display: inline-block; padding: .15rem .5rem; border-radius: var(--r); border: 1px solid var(--border); font-size: .78rem; white-space: nowrap; color: var(--t2); background: transparent; }
+    .pill[data-b='lo'] { border-color: var(--burnt); color: var(--burnt); }
+    .pill[data-b='lo2'] { border-color: var(--amber); color: var(--amber); }
+    .pill[data-b='hi2'] { border-color: var(--teal); color: var(--teal); }
+    .pill[data-b='hi'] { border-color: var(--teal); color: var(--teal); background: var(--teal-bg); }
+    .pill[data-b='no'] { border-style: dashed; color: var(--t3); }
+
+    .ll-note { color: var(--t3); font-size: .85rem; margin-top: .75rem; }
+    .ll-card { display: block; background: var(--card); border: 1px solid var(--border); border-radius: var(--r); padding: 1rem 1.15rem; margin-top: 1.25rem; max-width: 34rem; color: var(--ink); }
+    .ll-card strong { display: block; color: var(--teal); }
+    .ll-card .sub { display: block; font-size: .85rem; color: var(--t2); margin-top: .25rem; }
+
+    .src-foot { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; margin: 28px 0 48px; padding-top: 16px; border-top: 1px solid var(--border-soft); }
+    .src-foot .stamp { font-size: 11px; color: var(--t3); font-variant-numeric: tabular-nums; }
+
+    @media (max-width: 640px) {
+      .ll-tool > div, .ll-toggle { width: 100%; }
+      .ll-tool input, .ll-tool select { width: 100%; }
+      .ll-wrap tbody th[scope='row'] { min-width: 9rem; }
+    }
+  </style>
+</BaseLayout>

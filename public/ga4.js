@@ -39,6 +39,37 @@
       page_location: cleanLocation, page_referrer: referrer, transport_type: 'beacon' }, campaign, params || {}));
   }
   event('page_view', {}, 'page_view');
+  // Invoked only by the return page after its existing paid-verification response.
+  // Persist the transaction identifier alone; never pass licenses or customer fields.
+  var paidSeen = new Set();
+  window.__siteGA4Purchase = function (receipt, requestedSession) {
+    if (path !== (lake ? '/almanac/thanks' : '/welcome') || !receipt ||
+        !/^cs_live_[A-Za-z0-9]+$/.test(requestedSession || '') ||
+        receipt.transaction_id !== requestedSession || receipt.payment_status !== 'paid' ||
+        receipt.amount_unit !== 'stripe_minor') return;
+    var allowed = lake ? ['almanac_single', 'almanac_bundle'] : ['ingredientcalculator_pro'];
+    if (allowed.indexOf(receipt.item_id) < 0 || paidSeen.has(requestedSession)) return;
+    var key = 'ga4_purchase_' + site + '_' + requestedSession;
+    try { if (localStorage.getItem(key)) return; } catch (_) {}
+    var params = { transaction_id: requestedSession, payment_verified: true, revenue_status: 'not_reported' };
+    var currency = String(receipt.currency || '').toUpperCase();
+    // Explicit supported charge units. Unknown currencies retain a count without guessed money.
+    var divisor = /^(USD|EUR|GBP|PLN|CAD|AUD|NZD|CHF|SEK|NOK|DKK|SGD|HKD|INR|BRL|MXN|ZAR)$/.test(currency) ? 100 : /^(JPY|KRW)$/.test(currency) ? 1 : 0;
+    var amounts = [receipt.amount_total, receipt.amount_tax, receipt.amount_shipping];
+    if (divisor && amounts.every(function (v) { return Number.isSafeInteger(v) && v >= 0; }) &&
+        receipt.amount_tax + receipt.amount_shipping <= receipt.amount_total) {
+      params.currency = currency;
+      params.value = (receipt.amount_total - receipt.amount_tax - receipt.amount_shipping) / divisor;
+      params.tax = receipt.amount_tax / divisor;
+      params.shipping = receipt.amount_shipping / divisor;
+      params.revenue_status = 'verified';
+      params.items = [{ item_id: receipt.item_id, price: params.value, quantity: 1 }];
+    }
+    paidSeen.add(requestedSession);
+    event('purchase', params);
+    try { localStorage.setItem(key, '1'); } catch (_) {}
+  };
+  document.dispatchEvent(new Event('site-ga4-ready'));
   var tag = document.createElement('script');
   tag.async = true;
   tag.src = 'https://www.googletagmanager.com/gtag/js?id=' + measurementId;

@@ -106,6 +106,13 @@ const description = 'Download the almanac you just bought. The link is verified 
       .then(function (res) {
         var j = res.j;
         if (j && j.ok) {
+          if (res.s === 200) {
+            var trackReceipt = function () {
+              if (window.__siteGA4Purchase) window.__siteGA4Purchase(j.payment_receipt, sid);
+              else document.addEventListener('site-ga4-ready', trackReceipt, { once: true });
+            };
+            trackReceipt();
+          }
           hd.textContent = 'Thank you, here it is';
           sub.textContent = 'Payment confirmed with Stripe.';
           document.getElementById('lakeName').textContent =

@@ -197,6 +197,7 @@ async function handleVerify(url, env, ch) {
     : { name: `All ${lakes.length} lakes`, bytes: cat.bundleBytes || null };
   return json({
     ok: true,
+    payment_receipt: paymentReceipt(session, sku),
     sku,
     lake,
     name: meta?.name || null,
@@ -207,6 +208,16 @@ async function handleVerify(url, env, ch) {
     downloadsUsed: used + 1,
     downloadsAllowed: MAX_MINTS_PER_SESSION
   }, 200, ch);
+}
+
+// Analytics is stricter than delivery: free and test fulfillments are not purchases.
+export function paymentReceipt(s, sku) {
+  if (!s || s.livemode !== true || !/^cs_live_[A-Za-z0-9]+$/.test(s.id || '') ||
+      s.status !== 'complete' || s.payment_status !== 'paid') return null;
+  return { transaction_id: s.id, payment_status: 'paid', amount_unit: 'stripe_minor',
+    amount_total: s.amount_total, amount_tax: s.total_details?.amount_tax ?? null,
+    amount_shipping: s.total_details?.amount_shipping ?? null, currency: s.currency,
+    item_id: sku === 'bundle' ? 'almanac_bundle' : 'almanac_single' };
 }
 
 async function handleFile(url, env, ch) {

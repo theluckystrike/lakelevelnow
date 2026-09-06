@@ -19,8 +19,8 @@
 // CLAIM DISCIPLINE, inherited from the Powell and Mead chart pages:
 //   - No monthly medians and no spread between them. Extrema, counts and rankings only.
 //   - No claim that TWDB, LCRA and USGS share a vertical datum beyond what each publishes.
-//     USGS lists NAVD88 for the site and notes its data come from LCRA; TWDB and LCRA quote
-//     feet msl. This page labels each series and links it, and asserts no equivalence.
+//     USGS lists NAVD88 for the site and notes its data come from LCRA; TWDB states feet above
+//     NAVD88 plus 0.6 ft; LCRA quotes feet msl. Each series is labelled and linked, no equivalence asserted.
 //   - No ramp status. LCRA publishes it; this page links it.
 //   - No factual claim about what other trackers plot or how far back their charts go.
 import BaseLayout from '../../../layouts/BaseLayout.astro';
@@ -110,7 +110,7 @@ const marks = [
   { label: `Spillway ${fmtNum(band.spillwayFt, 0)} ft`, v: band.spillwayFt, dy: -5 },
   { label: `LCRA historic high ${fmtNum(band.historicHighFt, 2)} ft`, v: band.historicHighFt, dy: 13 },
   { label: `Full ${fmtNum(band.fullPoolFt, 0)} ft`, v: band.fullPoolFt, dy: -5 },
-  { label: `LCRA historic low ${fmtNum(band.historicLowFt, 2)} ft`, v: band.historicLowFt, dy: -5 },
+  { label: `LCRA historic low ${fmtNum(band.historicLowFt, 2)} ft`, v: band.historicLowFt, dy: 13 },
 ].filter((m) => m.v >= yMin && m.v <= yMax);
 const decadeTicks: { x: number; label: string }[] = [];
 for (let y = Math.ceil(Number(h.recordStart.slice(0, 4)) / 10) * 10; y <= Number(h.recordEnd.slice(0, 4)); y += 10) {
@@ -206,12 +206,28 @@ const ld = [articleLd, datasetLd, speakableLd(PATH), authorLd(),
           <path d={areaPath} fill="url(#llnFill)" stroke="none" />
           <path d={path} fill="none" stroke="var(--acc, #2a7ab0)" stroke-width="1.6" stroke-linejoin="round" />
           <circle cx={xOf(h.latestDate)} cy={yOf(h.latestFt)} r="4" fill="var(--acc, #2a7ab0)" />
-          <text x={xOf(h.latestDate) - 8} y={yOf(h.latestFt) + 16} text-anchor="end" font-size="11" fill="currentColor" fill-opacity="0.8">{fmtNum(h.latestFt, 0)} ft</text>
+          <text x={xOf(h.latestDate) - 8} y={yOf(h.latestFt) + 22} text-anchor="end" font-size="11" fill="currentColor" fill-opacity="0.8">{fmtNum(h.latestFt, 0)} ft</text>
         </svg>
         <figcaption style="font-size:13px;color:var(--t2);margin-top:10px;max-width:700px;">
           One point per month, the last reading of each month, from <a href={TWDB_CSV}>the Texas Water Development Board's daily reservoir file for Lake Travis</a>. {h.totalDays.toLocaleString('en-US')} rows run from {fmtRecordDate(h.recordStart)} to {fmtRecordDate(h.recordEnd)}. The earliest rows are month-end dates, so the oldest stretch of the line is coarser than the rest. Dashed lines are LCRA's published landmarks. Redrawn on every build.
         </figcaption>
       </figure>
+    </section>
+
+
+    <section class="section" style="margin-top:6px;">
+      <div class="callout a" style="max-width:960px;">
+        <p style="margin-bottom:8px;font-size:14px;color:var(--t2);">The daily series, every row in the file, drawn in your browser. Pick a span. Move across the line to read a date and its elevation.</p>
+        <div id="daily-range" style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:8px;">
+          <button type="button" class="btn" data-days="0">Whole record</button>
+          <button type="button" class="btn" data-days="3653">10 years</button>
+          <button type="button" class="btn" data-days="365">1 year</button>
+          <button type="button" class="btn" data-days="90">90 days</button>
+        </div>
+        <svg id="daily-svg" viewBox="0 0 960 300" width="100%" role="img" aria-label="Lake Travis daily elevation for the selected span, drawn from the TWDB file." style="display:block;max-width:100%;height:auto;"></svg>
+        <p id="daily-readout" role="status" aria-live="polite" style="margin:8px 0 0;font-size:14px;"></p>
+        <noscript><p style="font-size:14px;">The daily view needs JavaScript. The monthly chart above shows without it.</p></noscript>
+      </div>
     </section>
 
     <AlmanacContext slug="lake-travis" level={liveFt} asOf={live && reading ? reading.as_of : null} />
@@ -222,7 +238,7 @@ const ld = [articleLd, datasetLd, speakableLd(PATH), authorLd(),
         The latest row in the TWDB file is <span class="em-strong">{fmtNum(h.latestFt, 2)} ft msl on {fmtRecordDate(h.latestDate)}</span>. Of the {h.totalDays.toLocaleString('en-US')} rows going back to {fmtRecordDate(h.recordStart)}, {h.daysBelowLatest.toLocaleString('en-US')} are lower. Put the other way, the lake has been at or above today's level on {(h.totalDays - h.daysBelowLatest).toLocaleString('en-US')} recorded days.
       </p>
       <p class="readable">
-        The phrase since the reservoir first filled needs a boundary, and the boundary is ours rather than LCRA's or TWDB's. This page uses {h.firstFillCutoff}. LCRA dates the completion of Mansfield Dam to 1942, and the file's first rows in late 1940 sit far below anything the operated lake has seen, at {fmtNum(h.seriesLowFt, 2)} ft on {fmtRecordDate(h.seriesLowDate)}. Those rows describe a reservoir filling for the first time, not one being operated, so the whole-file minimum is not the drought record. The drought record is the lowest reading on or after the cutoff{postLowFt != null && postLowDate ? <>, {fmtNum(postLowFt, 2)} ft on {fmtRecordDate(postLowDate)}</> : null}.
+        The phrase since the reservoir first filled needs a boundary. This page uses {h.firstFillCutoff}, the impoundment date TWDB lists for Lake Travis on its reservoir page, and LCRA dates the completion of Mansfield Dam to 1942. The file's first rows in late 1940 sit far below anything the operated lake has seen, at {fmtNum(h.seriesLowFt, 2)} ft on {fmtRecordDate(h.seriesLowDate)}. Those rows describe a reservoir filling for the first time, not one being operated, so the whole-file minimum is not the drought record. The drought record is the lowest reading on or after the cutoff{postLowFt != null && postLowDate ? <>, {fmtNum(postLowFt, 2)} ft on {fmtRecordDate(postLowDate)}</> : null}.
       </p>
       <div class="def-table">
         <div class="row"><div class="k">Latest reading</div><div class="vv">{fmtNum(h.latestFt, 2)} ft, {fmtRecordDate(h.latestDate)}</div></div>
@@ -430,6 +446,118 @@ const ld = [articleLd, datasetLd, speakableLd(PATH), authorLd(),
           if (dGo) dGo.addEventListener('click', runDate);
           if (dInput) dInput.addEventListener('change', runDate);
           if (dInput && dInput.value) runDate();
+
+          // ---- daily chart with range controls, drawn from the decoded series --------------
+          // Nodes are built with createElementNS and setAttribute, never innerHTML. Every loop is
+          // bounded by the series length (at most MAX tokens) and every lookup is checked.
+          var dsvg = document.getElementById('daily-svg');
+          var dread = document.getElementById('daily-readout');
+          var drange = document.getElementById('daily-range');
+          var NS = 'http://www.w3.org/2000/svg';
+          var DW = 960, DH = 300, DPL = 56, DPR = 16, DPT = 14, DPB = 28;
+          var MARKS = [[FULL, 'Full'], [SPILL, 'Spillway'], [HIGH, 'LCRA high'], [LOW, 'LCRA low']];
+          var view = { i0: 0, i1: 0, yMin: 0, yMax: 1 };
+
+          function el(name, attrs) {
+            var n = document.createElementNS(NS, name);
+            var keys = Object.keys(attrs);
+            for (var k = 0; k < keys.length; k++) n.setAttribute(keys[k], String(attrs[keys[k]]));
+            return n;
+          }
+          function txt(x, y, s, anchor, op) {
+            var t = el('text', { x: x, y: y, 'text-anchor': anchor, 'font-size': 11, fill: 'currentColor', 'fill-opacity': op });
+            t.appendChild(document.createTextNode(s));
+            return t;
+          }
+          function dx(i) { return DPL + ((i - view.i0) / Math.max(1, view.i1 - view.i0)) * (DW - DPL - DPR); }
+          function dy(v) { return DPT + (1 - (v - view.yMin) / (view.yMax - view.yMin)) * (DH - DPT - DPB); }
+
+          function setRange(days) {
+            if (!dates.length) return;
+            var n = dates.length;
+            view.i1 = n - 1;
+            view.i0 = days > 0 ? Math.max(0, n - 1 - days) : 0;
+            var lo = Infinity, hi = -Infinity;
+            for (var i = view.i0; i <= view.i1; i++) { if (valsH[i] < lo) lo = valsH[i]; if (valsH[i] > hi) hi = valsH[i]; }
+            var pad = Math.max(50, (hi - lo) * 0.08);
+            view.yMin = Math.floor((lo - pad) / 100) * 1;
+            view.yMax = Math.ceil((hi + pad) / 100) * 1;
+            if (days === 0) { view.yMin = Math.min(view.yMin, LOW); view.yMax = Math.max(view.yMax, SPILL); }
+            if (view.yMax <= view.yMin) view.yMax = view.yMin + 1;
+          }
+
+          function drawAxes() {
+            var step = (view.yMax - view.yMin) > 60 ? 20 : ((view.yMax - view.yMin) > 20 ? 5 : 1);
+            var v0 = Math.ceil(view.yMin / step) * step;
+            for (var v = v0, guard = 0; v <= view.yMax && guard < 40; v += step, guard++) {
+              dsvg.appendChild(el('line', { x1: DPL, y1: dy(v), x2: DW - DPR, y2: dy(v), stroke: 'currentColor', 'stroke-opacity': 0.10, 'stroke-width': 1 }));
+              dsvg.appendChild(txt(DPL - 8, dy(v) + 4, String(v), 'end', 0.55));
+            }
+            var span = view.i1 - view.i0;
+            var ticks = 6;
+            for (var t = 0; t <= ticks; t++) {
+              var idx = view.i0 + Math.round((span * t) / ticks);
+              if (idx < 0 || idx >= dates.length) return;
+              var label = span > 1500 ? dates[idx].slice(0, 4) : dates[idx].slice(0, 7);
+              dsvg.appendChild(txt(dx(idx), DH - DPB + 18, label, t === 0 ? 'start' : (t === ticks ? 'end' : 'middle'), 0.55));
+            }
+          }
+
+          function drawMarks() {
+            for (var m = 0; m < MARKS.length; m++) {
+              var v = MARKS[m][0];
+              if (v < view.yMin || v > view.yMax) { continue; }
+              dsvg.appendChild(el('line', { x1: DPL, y1: dy(v), x2: DW - DPR, y2: dy(v), stroke: 'currentColor', 'stroke-opacity': 0.42, 'stroke-width': 1, 'stroke-dasharray': '5 4' }));
+              dsvg.appendChild(txt(DW - DPR, dy(v) - 4, MARKS[m][1] + ' ' + v + ' ft', 'end', 0.7));
+            }
+          }
+
+          function drawLine() {
+            var d = '';
+            var step = Math.max(1, Math.floor((view.i1 - view.i0) / 2000));
+            for (var i = view.i0, guard = 0; i <= view.i1 && guard < 4000; i += step, guard++) {
+              d += (d ? ' L' : 'M') + dx(i).toFixed(1) + ',' + dy(valsH[i] / 100).toFixed(1);
+            }
+            if (view.i1 > view.i0 && (view.i1 - view.i0) % step !== 0) d += ' L' + dx(view.i1).toFixed(1) + ',' + dy(valsH[view.i1] / 100).toFixed(1);
+            dsvg.appendChild(el('path', { d: d, fill: 'none', stroke: 'var(--acc, #2a7ab0)', 'stroke-width': 1.4, 'stroke-linejoin': 'round' }));
+            dsvg.appendChild(el('circle', { cx: dx(view.i1), cy: dy(valsH[view.i1] / 100), r: 3.5, fill: 'var(--acc, #2a7ab0)' }));
+          }
+
+          function redraw(days) {
+            if (!dsvg || !dates.length) return;
+            while (dsvg.firstChild) dsvg.removeChild(dsvg.firstChild);
+            setRange(days);
+            drawAxes();
+            drawMarks();
+            drawLine();
+            if (dread) dread.textContent = 'Showing ' + fmtD(dates[view.i0]) + ' to ' + fmtD(dates[view.i1]) + ', ' + (view.i1 - view.i0 + 1).toLocaleString('en-US') + ' rows.';
+          }
+
+          function onMove(ev) {
+            if (!dsvg || !dates.length || !dread) return;
+            var box = dsvg.getBoundingClientRect();
+            if (!(box.width > 0)) return;
+            var px = ((ev.clientX - box.left) / box.width) * DW;
+            var frac = (px - DPL) / (DW - DPL - DPR);
+            if (frac < 0 || frac > 1) return;
+            var idx = view.i0 + Math.round(frac * (view.i1 - view.i0));
+            if (idx < 0 || idx >= dates.length) return;
+            dread.textContent = fmtD(dates[idx]) + ', ' + (valsH[idx] / 100).toFixed(2) + ' ft msl.';
+          }
+
+          if (dsvg && drange && dates.length) {
+            var btns = drange.querySelectorAll('button[data-days]');
+            for (var b = 0; b < btns.length && b < 8; b++) {
+              btns[b].addEventListener('click', function (ev) {
+                var days = parseInt(ev.currentTarget.getAttribute('data-days') || '0', 10);
+                redraw(Number.isFinite(days) ? days : 0);
+              });
+            }
+            dsvg.addEventListener('mousemove', onMove);
+            redraw(0);
+          } else if (dread) {
+            dread.textContent = 'The daily series did not load. The monthly chart above is precomputed and shows without it.';
+          }
         })();
       </script>
     </section>
@@ -460,7 +588,7 @@ const ld = [articleLd, datasetLd, speakableLd(PATH), authorLd(),
         Every figure on this page is computed in code from <a href={TWDB_CSV}>one file</a>, the Texas Water Development Board's daily reservoir file for Lake Travis, which TWDB attributes to LCRA's gauge. The build fetches it, looks up the water_level column by name, parses {h.totalDays.toLocaleString('en-US')} rows, rejects a truncated download, and computes the extrema, the counts and the rankings from what is left. None of the numbers is typed by hand and none is carried as a constant that could go stale.
       </p>
       <p class="readable">
-        The cross-check is <a href={USGS_SITE}>USGS site 08154500, LCRA Lk Travis nr Austin, TX</a>, parameter 00062, elevation of the reservoir water surface above datum in feet. USGS states the data are obtained from LCRA, so this check confirms the file is current and transcribed correctly rather than measuring the lake with a second instrument. On the day this page was first built the two agreed within two hundredths of a foot. USGS lists NAVD88 as the site's datum and TWDB and LCRA quote feet msl; this page labels each series and links it, and makes no claim beyond that about how the datums relate.
+        The cross-check is <a href={USGS_SITE}>USGS site 08154500, LCRA Lk Travis nr Austin, TX</a>, parameter 00062, elevation of the reservoir water surface above datum in feet. USGS states the data are obtained from LCRA, so this check confirms the file is current and transcribed correctly rather than measuring the lake with a second instrument. On the day this page was first built the two agreed within two hundredths of a foot. TWDB states its Lake Travis values are feet above NAVD88 plus 0.6 ft, USGS lists NAVD88 as the site's datum, and LCRA quotes feet msl. This page labels each series and links it, and makes no claim beyond what each publishes about how those datums relate.
       </p>
       <p class="readable">
         The published landmarks, full, the spillway, the top of the dam, the historic high and the historic low, and both record tables come from <a href={LCRA}>LCRA</a> and are constants because they describe the dam and its history, not today's water. I compared the computed extremes from the TWDB file against LCRA's record book before publishing, and the page reports the comparison rather than assuming it.

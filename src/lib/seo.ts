@@ -77,7 +77,7 @@ export function authorLd() {
     name: AUTHOR.name,
     jobTitle: AUTHOR.role,
     url: absUrl(AUTHOR.url),
-    description: `${AUTHOR.name}, ${AUTHOR.blurb}. Pulls every LakeLevelNow reading from the same USGS, CDEC, and USBR feeds the operators report to.`,
+    description: `${AUTHOR.name}, ${AUTHOR.blurb}. Pulls every LakeLevelNow reading from the same USGS, CDEC, USBR and TWDB feeds the operators report to.`,
     knowsAbout: [
       'lake water levels',
       'USGS water data',

@@ -186,6 +186,14 @@ const feedNoun = feedLabel(reading?.feed) === 'CDEC' ? 'CDEC gage reading'
       </section>
     )}
 
+    {slug === 'lake-travis' && (
+      <section class="section">
+        <p class="readable" style="font-size:15px;color:var(--t1);max-width:660px;">
+          To see where today sits against every reading since 1940, the <a href="/lake/lake-travis/chart/">Lake Travis water level chart</a> plots the complete Texas Water Development Board daily record against LCRA's full mark, spillway, historic high and historic low.
+        </p>
+      </section>
+    )}
+
     {elev != null && (
       <section class="section">
         <h2 style="margin-bottom:8px;">How the level compares lately</h2>

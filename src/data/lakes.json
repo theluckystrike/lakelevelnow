@@ -9,8 +9,8 @@
     "capacity_af": null,
     "vol": 110000,
     "kd": 7,
-    "feed": null,
-    "usgs_site": null,
+    "feed": "usgs",
+    "usgs_site": "08154500",
     "cdec_id": null,
     "lat": null,
     "lon": null

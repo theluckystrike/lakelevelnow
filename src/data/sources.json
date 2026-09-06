@@ -23,6 +23,7 @@
   "lake-whitney":       { "feed": "usgs", "site": "08092500", "param": "62614" },
   "lake-belton":        { "feed": "usgs", "site": "08102000", "param": "62614" },
   "lake-buchanan":      { "feed": "usgs", "site": "08148000", "param": "00062" },
+  "lake-travis":        { "feed": "usgs", "site": "08154500", "param": "00062" },
   "canyon-lake":        { "feed": "usgs", "site": "08167700", "param": "62614" },
   "medina-lake":        { "feed": "usgs", "site": "08179500", "param": "62614" },
   "lake-somerville":    { "feed": "usgs", "site": "08109900", "param": "62614" },

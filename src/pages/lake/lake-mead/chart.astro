@@ -1,6 +1,6 @@
 ---
-// /lake/lake-powell/chart/ — the whole Reclamation daily record, plotted, with the one
-// thing a chart alone does not tell you: where today sits in 64 years of it.
+// /lake/lake-mead/chart/ — the whole Reclamation daily record, plotted, with the one
+// thing a chart alone does not tell you: where today sits in 91 years of it.
 //
 // TARGET: "lake mead water level chart". Chosen 2026-08-22 after the pipeline's stage 03
 // measured twenty-three candidate queries on a funded DataForSEO account and refused all but
@@ -12,8 +12,8 @@
 //
 // THE WEDGE: the trackers that outrank this site all plot a chart. What none of them does is
 // rank today against the whole file. Every figure here is computed by
-// scripts/fetch-powell-history.mjs from Reclamation's complete daily series (site 921,
-// 1963-12-28 onward) on every build. Nothing is typed by hand.
+// scripts/fetch-lake-history.mjs from Reclamation's complete daily series (site 921, from
+// the first row, MEAD_HISTORY.recordStart) on every build. Nothing is typed by hand.
 //
 // CLAIM DISCIPLINE, learned from three L8 blocks on the 2026-08-22 pipeline drafts:
 //   - No monthly medians and no spread between them. A median has no defining row, so it
@@ -43,7 +43,9 @@ const h = MEAD_HISTORY;
 const powell = POWELL_HISTORY;
 
 const PATH = '/lake/lake-mead/chart/';
-const LC = 'https://www.usbr.gov/lc/region/g4000/hourly/mead-elv.html';
+// The hourly Lower Colorado report. Its sibling mead-elv.html is an end-of-month table, so the
+// hourly claim on this page links the hourly page.
+const LC = 'https://www.usbr.gov/lc/region/g4000/hourly/hourly.html';
 const USBR_CSV = MEAD_HISTORY_SOURCE;
 const RISE = MEAD_HISTORY_CATALOG;
 const USBR_PDF = 'https://www.usbr.gov/lc/region/g4000/crss5Year.pdf';
@@ -134,7 +136,7 @@ const datasetLd = {
   isAccessibleForFree: true,
 };
 const ld = [articleLd, datasetLd, speakableLd(PATH), authorLd(),
-  breadcrumbLd([{ name: 'Home', path: '/' }, { name: 'Lakes', path: '/lakes' }, { name: 'Lake Mead', path: '/lake/lake-powell' }, { name: 'Water level chart', path: PATH }])];
+  breadcrumbLd([{ name: 'Home', path: '/' }, { name: 'Lakes', path: '/lakes' }, { name: 'Lake Mead', path: '/lake/lake-mead/' }, { name: 'Water level chart', path: PATH }])];
 ---
 <BaseLayout title={title} description={description} path={PATH} jsonLd={ld}>
   <div class="container">
@@ -142,7 +144,7 @@ const ld = [articleLd, datasetLd, speakableLd(PATH), authorLd(),
     <div class="crumbs" style="padding-top:20px;">
       <a href="/">Home</a><span class="sep">›</span>
       <a href="/lakes">Lakes</a><span class="sep">›</span>
-      <a href="/lake/lake-powell/">Lake Mead</a><span class="sep">›</span>
+      <a href="/lake/lake-mead/">Lake Mead</a><span class="sep">›</span>
       <span>Water level chart</span>
     </div>
 
@@ -190,7 +192,7 @@ const ld = [articleLd, datasetLd, speakableLd(PATH), authorLd(),
       </figure>
     </section>
 
-    <AlmanacContext slug="lake-powell" level={live && reading ? reading.level_ft : null} asOf={live && reading ? reading.as_of : null} />
+    <AlmanacContext slug="lake-mead" level={live && reading ? reading.level_ft : null} asOf={live && reading ? reading.as_of : null} />
 
     <section class="section airy">
       <h2>Where today sits in {yearsOfRecord} years of readings</h2>
@@ -205,7 +207,7 @@ const ld = [articleLd, datasetLd, speakableLd(PATH), authorLd(),
         </p>
       )}
       <p class="readable">
-        That phrase, since the reservoir first filled, needs a boundary, and the boundary is ours rather than Reclamation's. This page uses {h.firstFillCutoff}. Lake Mead reached full pool in 1980, so readings before that describe a reservoir filling for the first time, not one being operated. It matters because the whole-record minimum is much lower, {fmtNum(h.seriesLowFt, 2)} ft on {fmtRecordDate(h.seriesLowDate)}, and today is {vsSeriesLow ? vsSeriesLow.text : 'n/a'} that. Nobody should read today's figure as the lowest the lake has ever been.
+        That phrase, since the reservoir first filled, needs a boundary, and the boundary is ours rather than Reclamation's. This page uses {h.firstFillCutoff}. Reclamation's file shows Lake Mead first passing 1,220 ft on July 24, 1941, so readings before the cutoff describe a reservoir filling for the first time, not one being operated. It matters because the whole-record minimum is much lower, {fmtNum(h.seriesLowFt, 2)} ft on {fmtRecordDate(h.seriesLowDate)}, and today is {vsSeriesLow ? vsSeriesLow.text : 'n/a'} that. Nobody should read today's figure as the lowest the lake has ever been.
       </p>
       <div class="def-table">
         <div class="row"><div class="k">Latest daily reading</div><div class="vv">{fmtNum(h.latestFt, 2)} ft, {fmtRecordDate(h.latestDate)}</div></div>
@@ -223,7 +225,7 @@ const ld = [articleLd, datasetLd, speakableLd(PATH), authorLd(),
     <section class="section airy">
       <h2>Where the line sits against the operating landmarks</h2>
       <p class="readable">
-        The three dashed lines on the chart are published elevations, not chosen ones. Full pool at {fmtNum(band.fullPoolFt, 0)} ft is the top of the operating range. <a href={USBR_PDF}>Minimum power pool at {fmtNum(band.minPowerPoolFt, 0)} ft</a> is the line below which Glen Canyon Dam stops generating hydropower. <a href={USBR_PDF}>Dead pool at {fmtNum(band.deadPoolFt, 0)} ft</a> is the elevation down to which water can still be released through the river outlet works.
+        The three dashed lines on the chart are published elevations, not chosen ones. Full pool at {fmtNum(band.fullPoolFt, 0)} ft is the top of the operating range. <a href={USBR_PDF}>Minimum power pool at {fmtNum(band.minPowerPoolFt, 0)} ft</a> is the line below which Hoover Dam stops generating hydropower. <a href={USBR_PDF}>Dead pool at {fmtNum(band.deadPoolFt, 0)} ft</a> is the lowest elevation from which water can still pass the dam.
       </p>
       <div class="def-table">
         <div class="row"><div class="k">Full pool ({fmtNum(band.fullPoolFt, 0)} ft)</div><div class="vv">{vsFull ? vsFull.text : 'n/a'}</div></div>
@@ -329,7 +331,7 @@ const ld = [articleLd, datasetLd, speakableLd(PATH), authorLd(),
           if (input.value) run();
 
           // ---- the complete daily series, decoded once, for the date lookup ---------------
-          // Encoding is documented in scripts/fetch-powell-history.mjs: an absolute first value
+          // Encoding is documented in scripts/fetch-lake-history.mjs: an absolute first value
           // in hundredths of a foot, then one base-36 signed delta per day, with an explicit
           // 'gN:' gap marker wherever the file skips days. Decoding is bounded and any malformed
           // token stops the decode rather than producing a wrong series.
@@ -408,10 +410,10 @@ const ld = [articleLd, datasetLd, speakableLd(PATH), authorLd(),
 
     <section class="section airy">
       <h2>Questions about the Lake Mead record</h2>
-      <p class="readable"><strong>How far back does this chart go?</strong> To {fmtRecordDate(h.recordStart)}, the first row in Reclamation's daily file for Lake Mead. The dam gates closed in 1963. The file carries {h.totalDays.toLocaleString('en-US')} daily readings through {fmtRecordDate(h.recordEnd)}.</p>
+      <p class="readable"><strong>How far back does this chart go?</strong> To {fmtRecordDate(h.recordStart)}, the first row in Reclamation's daily file for Lake Mead. The file carries {h.totalDays.toLocaleString('en-US')} daily readings through {fmtRecordDate(h.recordEnd)}.</p>
       <p class="readable"><strong>Is this the lowest Lake Mead has ever been?</strong> No. The lowest reading in the whole file is {fmtNum(h.seriesLowFt, 2)} ft on {fmtRecordDate(h.seriesLowDate)}, during the years the reservoir was filling for the first time. {h.latestIsPostFillLow ? <>Today is the lowest since it first filled, which is a different and narrower statement.</> : <>Today sits {vsSeriesLow ? vsSeriesLow.text : 'n/a'} that mark.</>}</p>
       <p class="readable"><strong>What was the highest?</strong> {fmtNum(h.recordHighFt, 2)} ft on {fmtRecordDate(h.recordHighDate)}, which is {vsHighFull ? vsHighFull.text : 'n/a'} the {fmtNum(band.fullPoolFt, 0)} ft full-pool line.</p>
-      <p class="readable"><strong>Why does this chart differ from the live reading elsewhere on the site?</strong> Because they are different series. This chart plots Reclamation's daily pool elevation for site 921. The live reading comes from the Reclamation Lower Colorado hourly report, sampled every fifteen minutes. Both are federal, neither is wrong, and they are not the same measurement.</p>
+      <p class="readable"><strong>Why does this chart differ from the live reading elsewhere on the site?</strong> Because they are different series. This chart plots Reclamation's daily pool elevation for site 921. The live reading comes from Reclamation's <a href={LC}>Lower Colorado report</a>, which publishes hourly readings for Hoover Dam. Both are federal, neither is wrong, and they are not the same measurement.</p>
       <p class="readable"><strong>How often does it update?</strong> The file is refetched and every figure on this page recomputed on each build, which runs daily.</p>
     </section>
 

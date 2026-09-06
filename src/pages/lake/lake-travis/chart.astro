@@ -1,0 +1,477 @@
+---
+// /lake/lake-travis/chart/, the whole Texas Water Development Board daily record for Lake
+// Travis, plotted, with the one thing a chart alone does not tell you: where today sits in it.
+//
+// TARGET: "lake travis water level chart". Chosen 2026-09-06 after the pipeline's stage 03
+// measured 48 candidate queries on a funded DataForSEO account (United States, location 2840)
+// and kept three. It is the only Texas query found whose live SERP carries no AI Overview,
+// no local pack and no fortress domain in the top 3. Volume 90, difficulty 8. Travis had only
+// a registry detail page with no live feed until this sprint; the feed and the history file
+// were wired for this page.
+//
+// THE WEDGE: the trackers that rank for this query plot a chart. None ranks today against the
+// whole file, and none prints the LCRA record book beside the computed extremes so a reader
+// can see whether the two agree. Every figure here is computed by
+// scripts/fetch-lake-history.mjs from TWDB's daily file (rows from TRAVIS_HISTORY.recordStart)
+// on every build. Nothing is typed by hand except LCRA's published constants, which are
+// carried in TRAVIS_BAND and in the two LCRA tables below, each with the LCRA URL beside it.
+//
+// CLAIM DISCIPLINE, inherited from the Powell and Mead chart pages:
+//   - No monthly medians and no spread between them. Extrema, counts and rankings only.
+//   - No claim that TWDB, LCRA and USGS share a vertical datum beyond what each publishes.
+//     USGS lists NAVD88 for the site and notes its data come from LCRA; TWDB and LCRA quote
+//     feet msl. This page labels each series and links it, and asserts no equivalence.
+//   - No ramp status. LCRA publishes it; this page links it.
+//   - No factual claim about what other trackers plot or how far back their charts go.
+import BaseLayout from '../../../layouts/BaseLayout.astro';
+import AlmanacContext from '../../../components/AlmanacContext.astro';
+import {
+  LAKES, getReading, fmtNum,
+  TRAVIS_HISTORY, TRAVIS_HISTORY_MONTHLY, TRAVIS_HISTORY_SOURCE, TRAVIS_HISTORY_CATALOG,
+  TRAVIS_HISTORY_DAILY, TRAVIS_HISTORY_DAILY_START, TRAVIS_BAND,
+  compareToMark, fmtRecordDate,
+} from '../../../lib/lakes';
+import { authorLd, breadcrumbLd, speakableLd, absUrl } from '../../../lib/seo';
+
+const lake = LAKES.find((l) => l.slug === 'lake-travis')!;
+const reading = getReading('lake-travis');
+const live = !!(reading && reading.fresh);
+const liveFt = live && reading ? reading.level_ft : null;
+const band = TRAVIS_BAND;
+const h = TRAVIS_HISTORY;
+
+const PATH = '/lake/lake-travis/chart/';
+const TWDB_CSV = TRAVIS_HISTORY_SOURCE;
+const TWDB_PAGE = TRAVIS_HISTORY_CATALOG;
+const LCRA = 'https://www.lcra.org/water/dams-and-lakes/';
+const LCRA_RAMPS = 'https://www.lcra.org/water/boat-ramp-information/';
+const USGS_SITE = 'https://waterdata.usgs.gov/monitoring-location/TX071-08154500/';
+
+// LCRA's published record book, transcribed verbatim from LCRA (https://www.lcra.org/water/dams-and-lakes/),
+// fetched 2026-09-06. LCRA states these are "Based on daily readings at 8 a.m." They are
+// carried as constants because they are LCRA's figures, not ours, and are printed beside the
+// computed extremes from the TWDB file so the two can be compared rather than conflated.
+const LCRA_TOP10: { rank: number; date: string; ft: number }[] = [
+  { rank: 1, date: '1991-12-25', ft: 710.44 }, { rank: 2, date: '1957-05-18', ft: 707.38 },
+  { rank: 3, date: '1997-06-26', ft: 705.11 }, { rank: 4, date: '1992-02-08', ft: 704.83 },
+  { rank: 5, date: '2018-10-20', ft: 704.39 }, { rank: 6, date: '2007-07-06', ft: 701.52 },
+  { rank: 7, date: '2004-11-24', ft: 696.70 }, { rank: 8, date: '1987-06-14', ft: 693.48 },
+  { rank: 9, date: '2002-07-07', ft: 693.47 }, { rank: 10, date: '2016-06-07', ft: 692.70 },
+];
+const LCRA_LOWS: { rank: number; drought: string; date: string; ft: number }[] = [
+  { rank: 1, drought: '1947 to 1957', date: '1951-08-14', ft: 614.18 },
+  { rank: 2, drought: '1963 to 1964', date: '1963-11-08', ft: 615.02 },
+  { rank: 3, drought: '2008 to 2016', date: '2013-09-20', ft: 618.56 },
+  { rank: 4, drought: '1983 to 1984', date: '1984-10-07', ft: 636.58 },
+  { rank: 5, drought: '1999 to 2000', date: '2000-10-15', ft: 640.24 },
+  { rank: 6, drought: '2005 to 2006', date: '2006-12-13', ft: 643.55 },
+];
+
+const asOfFmt = reading?.as_of
+  ? new Date(reading.as_of).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
+  : '';
+const asOfIso = reading?.as_of ? String(reading.as_of).slice(0, 10) : '';
+
+// Distance from the latest TWDB reading to each LCRA landmark, direction derived from the
+// sign so no template ever prints a negative into a hardcoded "above".
+const vsFull = compareToMark(h.latestFt, band.fullPoolFt, 1);
+const vsSpill = compareToMark(h.latestFt, band.spillwayFt, 1);
+const vsHigh = compareToMark(h.latestFt, band.historicHighFt, 1);
+const vsLow = compareToMark(h.latestFt, band.historicLowFt, 1);
+const vsHighFull = compareToMark(h.recordHighFt, band.fullPoolFt, 2);
+const vsLowestSameDate = compareToMark(h.latestFt, h.lowestSameDateFt, 1);
+const rangeFt = band.historicHighFt - band.historicLowFt;
+const rangePct = Math.round(((h.latestFt - band.historicLowFt) / rangeFt) * 1000) / 10;
+const yearsOfRecord = Number(h.recordEnd.slice(0, 4)) - Number(h.recordStart.slice(0, 4));
+
+// The computed extremes against LCRA's record book. Compared here, at build time, and the
+// result is rendered as whichever sentence the numbers support. Never asserted in prose.
+const highDiff = Math.round((h.recordHighFt - band.historicHighFt) * 100) / 100;
+const highMatch = Math.abs(highDiff) < 0.005 && h.recordHighDate === band.historicHighDate;
+const postLowFt = h.postFillLowFt ?? null;
+const postLowDate = h.postFillLowDate ?? null;
+const lowDiff = postLowFt != null ? Math.round((postLowFt - band.historicLowFt) * 100) / 100 : null;
+const lowMatch = lowDiff != null && Math.abs(lowDiff) < 0.005 && postLowDate === band.historicLowDate;
+const dirWord = (d: number) => (d > 0 ? 'above' : 'below');
+
+// ---- chart geometry, computed here so the SVG carries no magic numbers -------------
+const W = 960, H = 380, PAD_L = 56, PAD_R = 16, PAD_T = 18, PAD_B = 34;
+const pts = TRAVIS_HISTORY_MONTHLY;
+const vals = pts.map((p) => p[1]);
+const yMin = Math.min(band.historicLowFt, Math.floor(Math.min(...vals) / 10) * 10);
+const yMax = Math.max(band.spillwayFt, Math.ceil(Math.max(...vals) / 10) * 10);
+const t0 = Date.parse(pts[0][0]);
+const t1 = Date.parse(pts[pts.length - 1][0]);
+const xOf = (iso: string) => PAD_L + ((Date.parse(iso) - t0) / (t1 - t0)) * (W - PAD_L - PAD_R);
+const yOf = (v: number) => PAD_T + (1 - (v - yMin) / (yMax - yMin)) * (H - PAD_T - PAD_B);
+const path = pts.map((p, i) => `${i === 0 ? 'M' : 'L'}${xOf(p[0]).toFixed(1)},${yOf(p[1]).toFixed(1)}`).join(' ');
+const areaPath = `${path} L${xOf(pts[pts.length - 1][0]).toFixed(1)},${(H - PAD_B).toFixed(1)} L${xOf(pts[0][0]).toFixed(1)},${(H - PAD_B).toFixed(1)} Z`;
+const marks = [
+  { label: `Spillway ${fmtNum(band.spillwayFt, 0)} ft`, v: band.spillwayFt, dy: -5 },
+  { label: `LCRA historic high ${fmtNum(band.historicHighFt, 2)} ft`, v: band.historicHighFt, dy: 13 },
+  { label: `Full ${fmtNum(band.fullPoolFt, 0)} ft`, v: band.fullPoolFt, dy: -5 },
+  { label: `LCRA historic low ${fmtNum(band.historicLowFt, 2)} ft`, v: band.historicLowFt, dy: -5 },
+].filter((m) => m.v >= yMin && m.v <= yMax);
+const decadeTicks: { x: number; label: string }[] = [];
+for (let y = Math.ceil(Number(h.recordStart.slice(0, 4)) / 10) * 10; y <= Number(h.recordEnd.slice(0, 4)); y += 10) {
+  decadeTicks.push({ x: xOf(`${y}-01-01`), label: String(y) });
+}
+const yTicks: { y: number; label: string }[] = [];
+for (let v = Math.ceil(yMin / 20) * 20; v <= yMax; v += 20) yTicks.push({ y: yOf(v), label: String(v) });
+
+const title = `Lake Travis water level chart, ${yearsOfRecord} years of TWDB readings`;
+const description = `Every Lake Travis reading in the Texas Water Development Board file since ${h.recordStart}, charted against LCRA's full mark, spillway, historic high and historic low, with today's ${fmtNum(h.latestFt, 2)} ft ranked against ${h.totalDays.toLocaleString('en-US')} rows of record.`;
+
+const qas = `Lake Travis stood at ${fmtNum(h.latestFt, 2)} ft msl on ${fmtRecordDate(h.latestDate)} in the Texas Water Development Board daily file, ${vsFull ? vsFull.text : 'an unknown distance from'} LCRA's full mark of ${fmtNum(band.fullPoolFt, 0)} ft, and ${rangePct} percent of the way from LCRA's historic low to its historic high.`;
+
+const articleLd = {
+  '@context': 'https://schema.org',
+  '@type': 'Article',
+  headline: title,
+  description,
+  url: absUrl(PATH),
+  mainEntityOfPage: absUrl(PATH),
+  datePublished: '2026-09-06',
+  dateModified: asOfIso || '2026-09-06',
+  author: { '@type': 'Person', name: 'Mike', url: absUrl('/about/'), description: 'Independent developer behind zovo.one, building small fast utility sites including LakeLevelNow. Works on LakeLevelNow full-time.' },
+  publisher: { '@type': 'Organization', name: 'LakeLevelNow', url: absUrl('/') },
+};
+const datasetLd = {
+  '@context': 'https://schema.org',
+  '@type': 'Dataset',
+  name: 'Lake Travis daily water surface elevation, complete Texas Water Development Board record with derived rankings',
+  description: `The Texas Water Development Board's daily reservoir file for Lake Travis from ${h.recordStart} to ${h.recordEnd}, with extrema, counts and rankings recomputed in code on every build and compared with LCRA's published record book.`,
+  url: absUrl(PATH),
+  temporalCoverage: `${h.recordStart}/${h.recordEnd}`,
+  variableMeasured: [
+    { '@type': 'PropertyValue', name: 'Latest daily water surface elevation', value: String(h.latestFt), unitText: 'ft msl' },
+    { '@type': 'PropertyValue', name: 'Rows in the record', value: String(h.totalDays), unitText: 'days' },
+    { '@type': 'PropertyValue', name: 'Highest daily elevation in the file', value: String(h.recordHighFt), unitText: 'ft msl' },
+    { '@type': 'PropertyValue', name: 'Lowest daily elevation in the file including the initial filling', value: String(h.seriesLowFt), unitText: 'ft msl' },
+    { '@type': 'PropertyValue', name: 'Lowest daily elevation since the reservoir first filled', value: String(postLowFt ?? ''), unitText: 'ft msl' },
+    { '@type': 'PropertyValue', name: 'Rows in the record below the latest reading', value: String(h.daysBelowLatest), unitText: 'days' },
+    { '@type': 'PropertyValue', name: 'Position of the latest reading between the LCRA historic low and high', value: String(rangePct), unitText: 'percent' },
+  ],
+  creator: { '@type': 'Organization', name: 'Texas Water Development Board', url: TWDB_PAGE },
+  distribution: [{ '@type': 'DataDownload', encodingFormat: 'text/csv', contentUrl: TWDB_CSV }],
+  dateModified: asOfIso || '2026-09-06',
+  isAccessibleForFree: true,
+};
+const ld = [articleLd, datasetLd, speakableLd(PATH), authorLd(),
+  breadcrumbLd([{ name: 'Home', path: '/' }, { name: 'Lakes', path: '/lakes' }, { name: 'Lake Travis', path: '/lake/lake-travis/' }, { name: 'Water level chart', path: PATH }])];
+---
+<BaseLayout title={title} description={description} path={PATH} jsonLd={ld}>
+  <div class="container">
+
+    <div class="crumbs" style="padding-top:20px;">
+      <a href="/">Home</a><span class="sep">›</span>
+      <a href="/lakes">Lakes</a><span class="sep">›</span>
+      <a href="/lake/lake-travis/">Lake Travis</a><span class="sep">›</span>
+      <span>Water level chart</span>
+    </div>
+
+    <div style="padding-top:16px;">
+      <h1>Lake Travis water level chart</h1>
+      <p style="font-size:13px;color:var(--t2);margin-top:8px;">By <a href="/about/">Mike</a>, independent developer behind <a href="https://zovo.one" rel="noopener">zovo.one</a>.{asOfFmt && ` Data checked ${asOfFmt}.`}</p>
+    </div>
+
+    <p class="qas" data-keyword="lake travis water level chart" style="font-size:15px;color:var(--t1);margin-top:14px;max-width:660px;font-weight:500;">{qas}</p>
+
+    <section class="section" style="margin-top:18px;">
+      <figure style="margin:0;">
+        <svg viewBox={`0 0 ${W} ${H}`} width="100%" role="img"
+             aria-label={`Lake Travis water surface elevation from ${h.recordStart} to ${h.recordEnd}, ranging from ${fmtNum(h.seriesLowFt,0)} to ${fmtNum(h.recordHighFt,0)} feet msl, with LCRA's full mark, spillway, historic high and historic low drawn as reference lines.`}
+             style="display:block;max-width:100%;height:auto;">
+          <defs>
+            <linearGradient id="llnFill" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0%" stop-color="var(--acc, #2a7ab0)" stop-opacity="0.28" />
+              <stop offset="100%" stop-color="var(--acc, #2a7ab0)" stop-opacity="0.02" />
+            </linearGradient>
+          </defs>
+          {yTicks.map((t) => (
+            <g>
+              <line x1={PAD_L} y1={t.y} x2={W - PAD_R} y2={t.y} stroke="currentColor" stroke-opacity="0.10" stroke-width="1" />
+              <text x={PAD_L - 8} y={t.y + 4} text-anchor="end" font-size="11" fill="currentColor" fill-opacity="0.55">{t.label}</text>
+            </g>
+          ))}
+          {decadeTicks.map((t) => (
+            <text x={t.x} y={H - PAD_B + 20} text-anchor="middle" font-size="11" fill="currentColor" fill-opacity="0.55">{t.label}</text>
+          ))}
+          {marks.map((m) => (
+            <g>
+              <line x1={PAD_L} y1={yOf(m.v)} x2={W - PAD_R} y2={yOf(m.v)} stroke="currentColor" stroke-opacity="0.42" stroke-width="1" stroke-dasharray="5 4" />
+              <text x={W - PAD_R} y={yOf(m.v) + m.dy} text-anchor="end" font-size="11" fill="currentColor" fill-opacity="0.7">{m.label}</text>
+            </g>
+          ))}
+          <path d={areaPath} fill="url(#llnFill)" stroke="none" />
+          <path d={path} fill="none" stroke="var(--acc, #2a7ab0)" stroke-width="1.6" stroke-linejoin="round" />
+          <circle cx={xOf(h.latestDate)} cy={yOf(h.latestFt)} r="4" fill="var(--acc, #2a7ab0)" />
+          <text x={xOf(h.latestDate) - 8} y={yOf(h.latestFt) + 16} text-anchor="end" font-size="11" fill="currentColor" fill-opacity="0.8">{fmtNum(h.latestFt, 0)} ft</text>
+        </svg>
+        <figcaption style="font-size:13px;color:var(--t2);margin-top:10px;max-width:700px;">
+          One point per month, the last reading of each month, from <a href={TWDB_CSV}>the Texas Water Development Board's daily reservoir file for Lake Travis</a>. {h.totalDays.toLocaleString('en-US')} rows run from {fmtRecordDate(h.recordStart)} to {fmtRecordDate(h.recordEnd)}. The earliest rows are month-end dates, so the oldest stretch of the line is coarser than the rest. Dashed lines are LCRA's published landmarks. Redrawn on every build.
+        </figcaption>
+      </figure>
+    </section>
+
+    <AlmanacContext slug="lake-travis" level={liveFt} asOf={live && reading ? reading.as_of : null} />
+
+    <section class="section airy">
+      <h2>Where today sits in {yearsOfRecord} years of readings</h2>
+      <p class="readable">
+        The latest row in the TWDB file is <span class="em-strong">{fmtNum(h.latestFt, 2)} ft msl on {fmtRecordDate(h.latestDate)}</span>. Of the {h.totalDays.toLocaleString('en-US')} rows going back to {fmtRecordDate(h.recordStart)}, {h.daysBelowLatest.toLocaleString('en-US')} are lower. Put the other way, the lake has been at or above today's level on {(h.totalDays - h.daysBelowLatest).toLocaleString('en-US')} recorded days.
+      </p>
+      <p class="readable">
+        The phrase since the reservoir first filled needs a boundary, and the boundary is ours rather than LCRA's or TWDB's. This page uses {h.firstFillCutoff}. LCRA dates the completion of Mansfield Dam to 1942, and the file's first rows in late 1940 sit far below anything the operated lake has seen, at {fmtNum(h.seriesLowFt, 2)} ft on {fmtRecordDate(h.seriesLowDate)}. Those rows describe a reservoir filling for the first time, not one being operated, so the whole-file minimum is not the drought record. The drought record is the lowest reading on or after the cutoff{postLowFt != null && postLowDate ? <>, {fmtNum(postLowFt, 2)} ft on {fmtRecordDate(postLowDate)}</> : null}.
+      </p>
+      <div class="def-table">
+        <div class="row"><div class="k">Latest reading</div><div class="vv">{fmtNum(h.latestFt, 2)} ft, {fmtRecordDate(h.latestDate)}</div></div>
+        {postLowFt != null && postLowDate && (
+          <div class="row"><div class="k">Lowest since the reservoir first filled (on or after {h.firstFillCutoff})</div><div class="vv">{fmtNum(postLowFt, 2)} ft, {fmtRecordDate(postLowDate)}</div></div>
+        )}
+        <div class="row"><div class="k">Lowest in the whole file, during the initial filling</div><div class="vv">{fmtNum(h.seriesLowFt, 2)} ft, {fmtRecordDate(h.seriesLowDate)}</div></div>
+        <div class="row"><div class="k">Highest in the whole file</div><div class="vv">{fmtNum(h.recordHighFt, 2)} ft, {fmtRecordDate(h.recordHighDate)}</div></div>
+        <div class="row"><div class="k">Rows in the file below the latest reading</div><div class="vv">{h.daysBelowLatest.toLocaleString('en-US')} of {h.totalDays.toLocaleString('en-US')}</div></div>
+        <div class="row"><div class="k">Rank for this calendar date</div><div class="vv">{h.rankForDate} lowest of {h.yearsForDate} years</div></div>
+        <div class="row"><div class="k">Position between LCRA's historic low and high</div><div class="vv">{rangePct} percent</div></div>
+      </div>
+      <p class="readable" style="margin-top:12px;">
+        For {h.latestDate.slice(5)} specifically, the file carries {h.yearsForDate} years of readings and today's ranks {h.rankForDate} lowest among them. The lowest reading on this date is {fmtNum(h.lowestSameDateFt, 2)} ft, in {String(h.lowestSameDateDate ?? '').slice(0, 4)}, and today sits {vsLowestSameDate ? vsLowestSameDate.text : 'n/a'} it.
+      </p>
+    </section>
+
+    <section class="section airy">
+      <h2>Where the line sits against the LCRA landmarks</h2>
+      <p class="readable">
+        The four dashed lines on the chart are <a href={LCRA}>published LCRA elevations</a>, not chosen ones. Full at {fmtNum(band.fullPoolFt, 0)} ft msl is what LCRA calls full for water supply purposes, and at that level LCRA puts the lake's contents at 1,115,076 acre-feet. Above it is the flood pool, which LCRA says is designed to hold an additional 776,062 acre-feet of floodwater; Travis is the only lake in the Highland Lakes chain built specifically to hold back floods. The overflow spillway of Mansfield Dam is at {fmtNum(band.spillwayFt, 0)} ft msl and the top of the dam at {fmtNum(band.topOfDamFt, 0)} ft msl. LCRA's historic high is {fmtNum(band.historicHighFt, 2)} ft on {fmtRecordDate(band.historicHighDate)} and its historic low {fmtNum(band.historicLowFt, 2)} ft on {fmtRecordDate(band.historicLowDate)}.
+      </p>
+      <div class="def-table">
+        <div class="row"><div class="k">Full ({fmtNum(band.fullPoolFt, 0)} ft)</div><div class="vv">{vsFull ? vsFull.text : 'n/a'}</div></div>
+        <div class="row"><div class="k">Overflow spillway ({fmtNum(band.spillwayFt, 0)} ft)</div><div class="vv">{vsSpill ? vsSpill.text : 'n/a'}</div></div>
+        <div class="row"><div class="k">LCRA historic high ({fmtNum(band.historicHighFt, 2)} ft)</div><div class="vv">{vsHigh ? vsHigh.text : 'n/a'}</div></div>
+        <div class="row"><div class="k">LCRA historic low ({fmtNum(band.historicLowFt, 2)} ft)</div><div class="vv">{vsLow ? vsLow.text : 'n/a'}</div></div>
+      </div>
+      <p class="readable" style="margin-top:12px;">
+        Reading the line against those marks is what a bare chart skips. A Travis reading above {fmtNum(band.fullPoolFt, 0)} ft is water held in the flood pool for controlled release, not a lake in trouble, and a reading well under it is a water supply question rather than a navigation one. The percentage in the table above puts today on a scale from zero at LCRA's historic low to one hundred at its historic high, which is an elevation distance, not a storage volume.
+      </p>
+    </section>
+
+    <section class="section airy">
+      <h2>The LCRA record book as the cross-check</h2>
+      <p class="readable">
+        LCRA publishes its own ranked lists of the highest and lowest Lake Travis levels, based on daily readings at 8 a.m. The TWDB file is a daily series from the same operator's gauge, so the two should agree, and the build checks that they do rather than assuming it. {postLowFt != null && postLowDate ? (
+          lowMatch
+            ? <>The lowest reading in the TWDB file since the cutoff, {fmtNum(postLowFt, 2)} ft on {fmtRecordDate(postLowDate)}, matches LCRA's historic low exactly, to the hundredth of a foot and to the day.</>
+            : <>The lowest reading in the TWDB file since the cutoff is {fmtNum(postLowFt, 2)} ft on {fmtRecordDate(postLowDate)}, which is {Math.abs(lowDiff ?? 0).toFixed(2)} ft {dirWord(lowDiff ?? 0)} LCRA's historic low of {fmtNum(band.historicLowFt, 2)} ft on {fmtRecordDate(band.historicLowDate)}.</>
+        ) : null} {highMatch
+          ? <>The highest reading in the file, {fmtNum(h.recordHighFt, 2)} ft on {fmtRecordDate(h.recordHighDate)}, matches LCRA's historic high exactly.</>
+          : <>The highest reading in the file is {fmtNum(h.recordHighFt, 2)} ft on {fmtRecordDate(h.recordHighDate)}, which is {Math.abs(highDiff).toFixed(2)} ft {dirWord(highDiff)} LCRA's historic high of {fmtNum(band.historicHighFt, 2)} ft on {fmtRecordDate(band.historicHighDate)}. A crest that passes overnight can land on different calendar days and at different heights in an 8 a.m. reading and a daily file, which is why LCRA's figure is the one drawn on the chart and the TWDB figure is reported beside it rather than in its place.</>}
+      </p>
+      <div class="def-table" style="margin-top:12px;">
+        <div class="row"><div class="k"><strong>LCRA's ten highest levels</strong></div><div class="vv"><strong>ft msl</strong></div></div>
+        {LCRA_TOP10.map((r) => (
+          <div class="row"><div class="k">{r.rank}. {fmtRecordDate(r.date)}</div><div class="vv">{fmtNum(r.ft, 2)}</div></div>
+        ))}
+      </div>
+      <div class="def-table" style="margin-top:12px;">
+        <div class="row"><div class="k"><strong>LCRA's lowest levels by drought</strong></div><div class="vv"><strong>ft msl</strong></div></div>
+        {LCRA_LOWS.map((r) => (
+          <div class="row"><div class="k">{r.rank}. {r.drought} drought, {fmtRecordDate(r.date)}</div><div class="vv">{fmtNum(r.ft, 2)}</div></div>
+        ))}
+      </div>
+      <p class="readable" style="font-size:14px;color:var(--t2);margin-top:10px;">
+        Both tables are transcribed from <a href={LCRA}>LCRA's dams and lakes page</a>, which states they are based on daily readings at 8 a.m. Today's reading of {fmtNum(h.latestFt, 2)} ft is {vsHigh ? vsHigh.text : 'n/a'} the top of the first table and {vsLow ? vsLow.text : 'n/a'} the top of the second.
+      </p>
+    </section>
+
+    <section class="section airy">
+      <h2 style="margin-bottom:8px;">Check any elevation or date against the record</h2>
+      <div class="callout a" style="max-width:660px;">
+        <p style="margin-bottom:10px;">Enter an elevation in feet msl, a level you remember from a dock post or a past trip, and get where it sits against LCRA's full mark, the spillway and the two historic extremes, plus how many rows in the TWDB file are lower. Or pick a date and get the reading the file holds for that day and its rank. Both answers are computed in your browser from the same series the chart draws. Nothing is sent anywhere.</p>
+        <label for="chart-input" style="font-size:13px;color:var(--t2);">An elevation in feet msl</label>
+        <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-top:4px;">
+          <input id="chart-input" type="number" inputmode="decimal" step="any" value={String(h.latestFt)} placeholder="670" style="width:140px;padding:8px 10px;font-size:15px;" />
+          <button id="chart-go" type="button" class="btn">Place it in the record</button>
+        </div>
+        <p id="chart-out" role="status" aria-live="polite" style="margin-top:10px;font-size:15px;">At {fmtNum(h.latestFt, 2)} ft the lake sits {vsFull ? vsFull.text : 'n/a'} full, {vsSpill ? vsSpill.text : 'n/a'} the spillway, {vsLow ? vsLow.text : 'n/a'} LCRA's historic low, and {rangePct} percent of the way through the historic range.</p>
+
+        <label for="chart-date" style="font-size:13px;color:var(--t2);display:block;margin-top:16px;">A date in the record</label>
+        <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-top:4px;">
+          <input id="chart-date" type="date" min={h.recordStart} max={h.recordEnd} value={h.recordEnd} style="padding:8px 10px;font-size:15px;" />
+          <button id="chart-date-go" type="button" class="btn">Look up that day</button>
+        </div>
+        <p id="chart-date-out" role="status" aria-live="polite" style="margin:10px 0 0;font-size:15px;"></p>
+        <noscript><p>The checker needs JavaScript. Every other number on this page is precomputed and shows without it.</p></noscript>
+      </div>
+      <script is:inline define:vars={{ FULL: band.fullPoolFt, SPILL: band.spillwayFt, HIGH: band.historicHighFt, LOW: band.historicLowFt, TODAY: h.latestFt, SERIESLOW: h.seriesLowFt, FILEHIGH: h.recordHighFt, DAILY: TRAVIS_HISTORY_DAILY, DSTART: TRAVIS_HISTORY_DAILY_START, CUTOFF: h.firstFillCutoff }}>
+        // NASA Power of 10 applied to the one piece of client JS on this page, same posture
+        // as the Mead and Powell chart pages. Preconditions asserted, every lookup checked,
+        // input bounded, and the whole thing fails closed rather than binding a half-wired widget.
+        (function () {
+          'use strict';
+          var MIN_INPUT_FT = 0;
+          var MAX_INPUT_FT = 10000;
+
+          if (![FULL, SPILL, HIGH, LOW, TODAY, SERIESLOW, FILEHIGH].every(Number.isFinite)) return;
+          if (!(LOW < FULL && FULL < HIGH && HIGH < SPILL)) return;   // ordering invariant
+
+          var input = document.getElementById('chart-input');
+          var out = document.getElementById('chart-out');
+          if (!input || !out) return;
+
+          // ---- the complete daily series, decoded once ----------------------------------
+          // Encoding is documented in scripts/fetch-lake-history.mjs: an absolute first value
+          // in hundredths of a foot, then one base-36 signed delta per row, with an explicit
+          // 'gN:' gap marker wherever the file skips days. Decoding is bounded and any malformed
+          // token stops the decode rather than producing a wrong series.
+          var dates = [], valsH = [];
+          (function decode() {
+            if (typeof DAILY !== 'string' || !DAILY || !/^\d{4}-\d{2}-\d{2}$/.test(String(DSTART))) return;
+            var toks = DAILY.split(',');
+            var MAX = 60000;
+            if (toks.length > MAX) return;
+            var dayMs = 86400000;
+            var t = Date.parse(DSTART + 'T00:00:00Z');
+            if (!Number.isFinite(t)) return;
+            var cur = null;
+            for (var i = 0; i < toks.length; i++) {
+              var tk = toks[i];
+              if (i > 0) {
+                var gi = tk.indexOf(':');
+                if (gi > 0 && tk.charAt(0) === 'g') {
+                  var gap = parseInt(tk.slice(1, gi), 36);
+                  if (!Number.isFinite(gap)) return;
+                  t += gap * dayMs;
+                  tk = tk.slice(gi + 1);
+                } else { t += dayMs; }
+                var d = parseInt(tk, 36);
+                if (!Number.isFinite(d)) return;
+                cur += d;
+              } else {
+                cur = parseInt(tk, 10);
+                if (!Number.isFinite(cur)) return;
+              }
+              dates.push(new Date(t).toISOString().slice(0, 10));
+              valsH.push(cur);
+            }
+          })();
+
+          function rel(v, mark, name) {
+            var d = v - mark;
+            if (Math.abs(d) < 0.05) return 'level with ' + name;
+            return Math.abs(d).toFixed(1) + ' ft ' + (d > 0 ? 'above ' : 'below ') + name;
+          }
+
+          function run() {
+            var raw = parseFloat(input.value);
+            if (!Number.isFinite(raw)) { out.textContent = 'Type an elevation to place it in the record.'; return; }
+            if (raw < MIN_INPUT_FT || raw > MAX_INPUT_FT) {
+              out.textContent = 'Enter an elevation between ' + MIN_INPUT_FT + ' and ' + MAX_INPUT_FT + ' ft msl.';
+              return;
+            }
+            var pct = ((raw - LOW) / (HIGH - LOW)) * 100;
+            var parts = [
+              'An elevation of ' + raw.toFixed(1) + ' ft would sit ' + rel(raw, FULL, 'full'),
+              rel(raw, SPILL, 'the spillway'),
+              rel(raw, LOW, "LCRA's historic low"),
+              'and ' + rel(raw, TODAY, 'the latest reading of ' + TODAY.toFixed(2) + ' ft'),
+            ];
+            var tail = ' That is ' + pct.toFixed(1) + ' percent of the way from the historic low to the historic high.';
+            if (raw > HIGH) tail += ' It is above LCRA’s historic high.';
+            else if (raw < SERIESLOW) tail += ' It is below every row in the file, including the initial filling.';
+            else if (raw < LOW) tail += ' It is below LCRA’s historic low.';
+            if (dates.length) {
+              var rawH = Math.round(raw * 100);
+              var below = 0;
+              for (var i = 0; i < valsH.length; i++) if (valsH[i] < rawH) below++;
+              tail += ' ' + below.toLocaleString('en-US') + ' of the ' + valsH.length.toLocaleString('en-US') + ' rows in the file are lower.';
+            }
+            out.textContent = parts.join(', ') + '.' + tail;
+          }
+
+          var go = document.getElementById('chart-go');
+          if (go) go.addEventListener('click', run);
+          input.addEventListener('input', run);
+
+          var dInput = document.getElementById('chart-date');
+          var dOut = document.getElementById('chart-date-out');
+          function fmtD(iso) {
+            var M = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+            var p = String(iso).split('-');
+            return M[Number(p[1]) - 1] + ' ' + Number(p[2]) + ', ' + p[0];
+          }
+          function runDate() {
+            if (!dOut) return;
+            if (!dates.length) { dOut.textContent = 'The series did not load, so the date lookup is unavailable. Every other figure on this page is precomputed.'; return; }
+            var want = dInput && dInput.value ? String(dInput.value) : '';
+            if (!/^\d{4}-\d{2}-\d{2}$/.test(want)) { dOut.textContent = 'Pick a date between ' + fmtD(dates[0]) + ' and ' + fmtD(dates[dates.length - 1]) + '.'; return; }
+            var idx = -1;
+            var lo = 0, hi = dates.length - 1;
+            while (lo <= hi) {                       // bounded binary search
+              var mid = (lo + hi) >> 1;
+              if (dates[mid] === want) { idx = mid; break; }
+              if (dates[mid] < want) lo = mid + 1; else hi = mid - 1;
+            }
+            if (idx < 0) { dOut.textContent = 'The TWDB file carries no reading for ' + fmtD(want) + '. The record runs ' + fmtD(dates[0]) + ' to ' + fmtD(dates[dates.length - 1]) + ', and the earliest years hold only month-end rows.'; return; }
+            var v = valsH[idx] / 100;
+            var below = 0, sinceCutoff = 0;
+            for (var i = 0; i < valsH.length; i++) {
+              if (valsH[i] < valsH[idx]) below++;
+              if (dates[i] >= CUTOFF && valsH[i] < valsH[idx]) sinceCutoff++;
+            }
+            var pct = (below / valsH.length) * 100;
+            dOut.textContent = 'On ' + fmtD(want) + ' Lake Travis stood at ' + v.toFixed(2) + ' ft msl. '
+              + below.toLocaleString('en-US') + ' of the ' + valsH.length.toLocaleString('en-US')
+              + ' rows in the file are lower, so that day sits in the bottom '
+              + (pct < 1 ? pct.toFixed(2) : pct.toFixed(1)) + ' percent of the record'
+              + (sinceCutoff === 0 ? ', and no day on or after ' + CUTOFF + ' is lower.' : ', with ' + sinceCutoff.toLocaleString('en-US') + ' of the lower days falling on or after ' + CUTOFF + '.');
+          }
+          var dGo = document.getElementById('chart-date-go');
+          if (dGo) dGo.addEventListener('click', runDate);
+          if (dInput) dInput.addEventListener('change', runDate);
+          if (dInput && dInput.value) runDate();
+        })();
+      </script>
+    </section>
+
+    <section class="section airy">
+      <h2>What the level means for getting on the water</h2>
+      <p class="readable">
+        At {fmtNum(h.latestFt, 2)} ft msl the lake is {vsFull ? vsFull.text : 'n/a'} LCRA's full mark. LCRA publishes which public ramps on the Highland Lakes are open and the minimum lake level each one needs, so the honest way to use this page is to compare today's elevation with the minimum listed for the ramp you plan to use on <a href={LCRA_RAMPS}>LCRA's boat ramp information page</a>, and to treat that page as the answer rather than this one. A high reading is not a green light either; during floods the operator can close the lake to recreational boating. Ramp status is never restated here, only linked.
+      </p>
+      <p class="readable" style="font-size:14px;color:var(--t2);">
+        Levels are point-in-time readings and can lag real conditions, confirm ramp and hazard status with the lake operator before heading out
+      </p>
+    </section>
+
+    <section class="section airy">
+      <h2>Questions about the Lake Travis record</h2>
+      <p class="readable"><strong>How far back does this chart go?</strong> To {fmtRecordDate(h.recordStart)}, the first row in the TWDB file for Lake Travis. The file carries {h.totalDays.toLocaleString('en-US')} rows through {fmtRecordDate(h.recordEnd)}, month-end rows in the earliest years and daily rows after that.</p>
+      <p class="readable"><strong>Is this the lowest Lake Travis has ever been?</strong> {postLowFt != null && postLowDate ? <>No. LCRA's historic low is {fmtNum(band.historicLowFt, 2)} ft on {fmtRecordDate(band.historicLowDate)}, and the lowest reading in the file since the reservoir first filled is {fmtNum(postLowFt, 2)} ft on {fmtRecordDate(postLowDate)}. Today sits {vsLow ? vsLow.text : 'n/a'} LCRA's mark.</> : <>LCRA's historic low is {fmtNum(band.historicLowFt, 2)} ft on {fmtRecordDate(band.historicLowDate)}, and today sits {vsLow ? vsLow.text : 'n/a'} it.</>}</p>
+      <p class="readable"><strong>What was the highest?</strong> LCRA's historic high is {fmtNum(band.historicHighFt, 2)} ft on {fmtRecordDate(band.historicHighDate)}. The highest row in the TWDB file is {fmtNum(h.recordHighFt, 2)} ft on {fmtRecordDate(h.recordHighDate)}, which is {vsHighFull ? vsHighFull.text : 'n/a'} the {fmtNum(band.fullPoolFt, 0)} ft full mark and still under the {fmtNum(band.spillwayFt, 0)} ft spillway.</p>
+      <p class="readable"><strong>What does full mean at Lake Travis?</strong> LCRA lists the lake as full for water supply purposes at {fmtNum(band.fullPoolFt, 0)} ft msl. That is the top of the water supply pool, not the top of the dam. The flood pool above it is designed space, and the lake has been above {fmtNum(band.fullPoolFt, 0)} ft many times in the record without reaching the spillway.</p>
+      <p class="readable"><strong>Why does this chart differ from the live reading elsewhere on the site?</strong> Because they are different series. This chart plots TWDB's daily file. The live reading on <a href="/lake/lake-travis/">the Lake Travis page</a> comes from <a href={USGS_SITE}>USGS site 08154500</a>, an instantaneous value which USGS notes is obtained from LCRA. A daily value and an instantaneous one will differ by a tenth of a foot or so on any given day, which is a difference in sampling rather than a disagreement.</p>
+      <p class="readable"><strong>How often does it update?</strong> The file is refetched and every figure on this page recomputed on each build, which runs daily.</p>
+    </section>
+
+    <section class="section airy">
+      <h2>Where these numbers come from</h2>
+      <p class="readable">
+        Every figure on this page is computed in code from <a href={TWDB_CSV}>one file</a>, the Texas Water Development Board's daily reservoir file for Lake Travis, which TWDB attributes to LCRA's gauge. The build fetches it, looks up the water_level column by name, parses {h.totalDays.toLocaleString('en-US')} rows, rejects a truncated download, and computes the extrema, the counts and the rankings from what is left. None of the numbers is typed by hand and none is carried as a constant that could go stale.
+      </p>
+      <p class="readable">
+        The cross-check is <a href={USGS_SITE}>USGS site 08154500, LCRA Lk Travis nr Austin, TX</a>, parameter 00062, elevation of the reservoir water surface above datum in feet. USGS states the data are obtained from LCRA, so this check confirms the file is current and transcribed correctly rather than measuring the lake with a second instrument. On the day this page was first built the two agreed within two hundredths of a foot. USGS lists NAVD88 as the site's datum and TWDB and LCRA quote feet msl; this page labels each series and links it, and makes no claim beyond that about how the datums relate.
+      </p>
+      <p class="readable">
+        The published landmarks, full, the spillway, the top of the dam, the historic high and the historic low, and both record tables come from <a href={LCRA}>LCRA</a> and are constants because they describe the dam and its history, not today's water. I compared the computed extremes from the TWDB file against LCRA's record book before publishing, and the page reports the comparison rather than assuming it.
+      </p>
+      <p class="readable">
+        Want today's reading rather than the record? <a href="/lake/lake-travis/">The Lake Travis water level page</a> carries the live USGS figure and the 24 hour move. The same chart exists for <a href="/lake/lake-powell/chart/">Lake Powell</a> and <a href="/lake/lake-mead/chart/">Lake Mead</a>, both from Reclamation's daily files.
+      </p>
+      <p class="readable" style="font-size:14px;color:var(--t2);">
+        Levels are point-in-time readings and can lag real conditions, confirm ramp and hazard status with the lake operator before heading out. Percent full is current storage divided by published full capacity, not a measure of water quality or safety. Not affiliated with any government agency, data is republished from public USGS, CDEC, and USBR feeds. Some lake-page links are affiliate links that may earn a commission at no extra cost to you, see the disclosure page.
+      </p>
+    </section>
+
+  </div>
+</BaseLayout>

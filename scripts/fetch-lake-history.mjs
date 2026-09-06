@@ -20,9 +20,15 @@
 // drawdown. FIRST_FILL_CUTOFF is a deliberately conservative 1981-01-01 and every figure
 // derived from it is published next to the boundary that produced it, never implied.
 //
+// LAKE TRAVIS comes from a different agency through the same pipeline. Travis is an LCRA
+// reservoir with no Reclamation file; the Texas Water Development Board publishes the complete
+// daily record at waterdatafortexas.org as a wider CSV with a comment block. A per-feed adapter
+// (FEEDS below) owns the URL, the timeout, the row floor and the parser, so the statistics and
+// the encoders stay one code path and every lake's JSON carries the identical shape.
+//
 // FAILURE POSTURE, same as fetch-levels.mjs and fetch-powell-ramps.mjs: any network or
 // parse failure keeps the previous file untouched and exits 0. A build must never break
-// because Reclamation changed a header. No axios (supply-chain rule), native fetch only,
+// because an agency changed a header. No axios (supply-chain rule), native fetch only,
 // bounded retries, bounded loops.
 import { readFile, writeFile } from 'node:fs/promises';
 import { existsSync } from 'node:fs';
@@ -31,18 +37,23 @@ import { fileURLToPath } from 'node:url';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 
-// One entry per lake with a complete Reclamation daily pool-elevation file. Adding a lake here
-// is the whole job: the fetch, the parse, the statistics and the encoded series all follow.
+// One entry per lake with a complete daily pool-elevation file. Adding a lake here is the whole
+// job: the fetch, the parse, the statistics and the encoded series all follow. `feed` names the
+// adapter in FEEDS below; 'usbr' entries carry a Reclamation hydrodata site number and 'twdb'
+// entries carry the full Water Data for Texas CSV URL.
 //
-// firstFillCutoff is OURS, not Reclamation's, and every figure derived from it is published next
+// firstFillCutoff is OURS, not the agency's, and every figure derived from it is published next
 // to it. It marks the point after which the reservoir was being operated rather than filled for
 // the first time, because the filling years reach far lower than any modern drawdown and are not
 // a comparable state. Powell reached full pool in 1980; Mead first passed 1,220 ft on 1941-07-24,
-// verified in the file itself.
+// verified in the file itself. Travis: the TWDB file opens on 1940-09-30 with MONTHLY rows while
+// the lake filled behind Mansfield Dam, completed in 1942, and only turns daily later; the
+// boundary is set at 1942-01-01, the dam's completion year, and is ours, not LCRA's or TWDB's.
 const LAKES = [
   {
     slug: 'powell',
     name: 'Lake Powell',
+    feed: 'usbr',
     site: '919',
     out: 'powell-history.json',
     catalog: 'https://data.usbr.gov/catalog/2362/item/508',
@@ -51,27 +62,57 @@ const LAKES = [
   {
     slug: 'mead',
     name: 'Lake Mead',
+    feed: 'usbr',
     site: '921',
     out: 'mead-history.json',
     catalog: 'https://data.usbr.gov/catalog/2362/item/508',
     firstFillCutoff: '1942-01-01',
   },
+  {
+    slug: 'travis',
+    name: 'Lake Travis',
+    feed: 'twdb',
+    source: 'https://www.waterdatafortexas.org/reservoirs/individual/travis.csv',
+    out: 'travis-history.json',
+    catalog: 'https://www.waterdatafortexas.org/reservoirs/individual/travis',
+    firstFillCutoff: '1942-01-01',
+  },
 ];
-const srcOf = (site) => `https://www.usbr.gov/uc/water/hydrodata/reservoir_data/${site}/csv/49.csv`;
-const TIMEOUT_MS = 30000;
+const usbrSrcOf = (site) => `https://www.usbr.gov/uc/water/hydrodata/reservoir_data/${site}/csv/49.csv`;
 const RETRIES = 3;
-const MAX_ROWS = 40000;        // bounded; the real file is ~22,900 rows
-const MIN_ROWS = 1000;         // a truncated file is not a series
+const MAX_ROWS = 40000;        // bounded; Reclamation files are ~22,900 rows, TWDB Travis is 30,649
 const UA = 'lakelevelnow/1.0 (+https://lakelevelnow.com)';
+
+// Per-feed adapter: where the file lives, how long to wait for it, how many rows make it a
+// series, and how to parse it. Everything downstream (computeStats, the monthly and daily
+// encoders, the payload) is feed-agnostic and consumes the same [{d, v}] shape.
+//
+// TWDB measured 9 to 22 seconds per pull on 2026-09-06 and served one truncated body in a probe
+// that day, so it gets a longer timeout, a row floor near the real size (30,649) and a check that
+// the last line is a complete row. Reclamation keeps the limits it always had.
+const FEEDS = {
+  usbr: {
+    srcOf: (lake) => usbrSrcOf(lake.site),
+    timeoutMs: 30000,
+    minRows: 1000,               // a truncated file is not a series
+    parse: (txt) => parseSeries(txt),
+  },
+  twdb: {
+    srcOf: (lake) => lake.source,
+    timeoutMs: 45000,
+    minRows: 20000,              // the real file is 30,649 rows; anything far short is truncated
+    parse: (txt) => parseTwdb(txt),
+  },
+};
 
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
-async function httpGet(url) {
+async function httpGet(url, timeoutMs) {
   let lastErr;
   for (let attempt = 0; attempt <= RETRIES; attempt++) {
     if (attempt > 0) await sleep(500 * 2 ** attempt);
     const ac = new AbortController();
-    const timer = setTimeout(() => ac.abort(), TIMEOUT_MS);
+    const timer = setTimeout(() => ac.abort(), timeoutMs);
     try {
       const res = await fetch(url, { redirect: 'follow', signal: ac.signal, headers: { 'User-Agent': UA } });
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
@@ -98,6 +139,60 @@ function parseSeries(txt) {
     const d = c[0].trim();
     if (!/^\d{4}-\d{2}-\d{2}$/.test(d)) continue;
     const v = Number(c[1]);
+    if (!Number.isFinite(v) || v <= 0) continue;
+    out.push({ d, v });
+  }
+  return out;
+}
+
+// Parse a Water Data for Texas reservoir CSV. The file opens with '#' comment lines, then a
+// header row (date,water_level,surface_area,reservoir_storage,conservation_storage,percent_full,
+// conservation_capacity,dead_pool_capacity), then one row per date. water_level is in feet above
+// the vertical datum named in the comments (Travis: NAVD88 + 0.6). The column is located by
+// header NAME, never by position, so a reordered header cannot silently feed storage as feet.
+//
+// Returns [] when the body cannot be trusted: no header, no water_level column, or a last line
+// that is not a complete row (the tell of a truncated download). An empty series trips the
+// minRows check in oneLake, which keeps the previous file.
+function parseTwdb(txt) {
+  const lines = String(txt).split('\n');
+  const out = [];
+  let dateIdx = -1;
+  let levelIdx = -1;
+  let headerLen = 0;
+  let i = 0;
+  // Locate the header. The comment block is short, but the scan is bounded to the whole file.
+  for (; i < lines.length; i += 1) {
+    const line = lines[i].trim();
+    if (!line || line.startsWith('#')) continue;
+    const cols = line.split(',').map((c) => c.trim());
+    dateIdx = cols.indexOf('date');
+    levelIdx = cols.indexOf('water_level');
+    headerLen = cols.length;
+    i += 1;
+    break;
+  }
+  if (dateIdx < 0 || levelIdx < 0) return [];
+
+  // Last non-empty line must be a complete row: header-width columns, a valid date and a
+  // finite water_level. A body cut off mid-line fails this and the whole pull is rejected.
+  let last = '';
+  for (let j = lines.length - 1; j >= 0 && j >= lines.length - 5; j -= 1) {
+    if (lines[j].trim()) { last = lines[j].trim(); break; }
+  }
+  const lc = last.split(',');
+  if (lc.length !== headerLen) return [];
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(lc[dateIdx].trim())) return [];
+  if (!Number.isFinite(Number(lc[levelIdx]))) return [];
+
+  for (; i < lines.length && out.length < MAX_ROWS; i += 1) {
+    const line = lines[i].trim();
+    if (!line || line.startsWith('#')) continue;
+    const c = line.split(',');
+    if (c.length <= levelIdx || c.length <= dateIdx) continue;
+    const d = c[dateIdx].trim();
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(d)) continue;
+    const v = Number(c[levelIdx]);
     if (!Number.isFinite(v) || v <= 0) continue;
     out.push({ d, v });
   }
@@ -240,19 +335,24 @@ function computeStats(series, FIRST_FILL_CUTOFF) {
 }
 
 async function oneLake(lake) {
-  const SOURCE = srcOf(lake.site);
+  const feed = FEEDS[lake.feed];
+  if (!feed) {
+    console.error(`${lake.name} history: unknown feed '${lake.feed}'; keeping the previous file.`);
+    return;
+  }
+  const SOURCE = feed.srcOf(lake);
   const OUT = path.join(ROOT, 'src', 'data', lake.out);
   let txt;
   try {
-    txt = await httpGet(SOURCE);
+    txt = await httpGet(SOURCE, feed.timeoutMs);
   } catch (e) {
     console.error(`${lake.name} history: fetch failed (${e && e.message ? e.message : e}); keeping the previous file.`);
     return;
   }
 
-  const series = parseSeries(txt);
-  if (series.length < MIN_ROWS) {
-    console.error(`${lake.name} history: only ${series.length} usable rows (< ${MIN_ROWS}); keeping the previous file.`);
+  const series = feed.parse(txt);
+  if (series.length < feed.minRows) {
+    console.error(`${lake.name} history: only ${series.length} usable rows (< ${feed.minRows}); keeping the previous file.`);
     return;
   }
 
@@ -321,7 +421,7 @@ async function oneLake(lake) {
 
 async function main() {
   for (let i = 0; i < LAKES.length; i += 1) {
-    // Sequential on purpose: two fetches of a ~500 KB federal file should not race, and a
+    // Sequential on purpose: fetches of a 500 KB to 2 MB agency file should not race, and a
     // failure on one lake must not stop the others.
     // eslint-disable-next-line no-await-in-loop
     await oneLake(LAKES[i]);

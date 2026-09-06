@@ -260,7 +260,7 @@ export function liveBandBelowFullPct(levelFt: number | null, fullPoolFt: number 
 
 // ---------------------------------------------------------------------------
 // Lake Powell, the COMPLETE Reclamation daily record (site 919), refreshed by
-// scripts/fetch-powell-history.mjs on every build.
+// scripts/fetch-lake-history.mjs on every build.
 //
 // This replaces POWELL_BAND.recordLowFt as the source of any record claim. That
 // constant was hand-typed as 3519.92 and labelled "Record low since first fill".
@@ -320,7 +320,7 @@ export const MEAD_BAND = {
   deadPoolFt: 895,
 };
 export const POWELL_HISTORY_MONTHLY = ((powellHistory as any).monthly ?? []) as [string, number][];
-// The complete daily series, delta-encoded (see scripts/fetch-powell-history.mjs). Shipped to the
+// The complete daily series, delta-encoded (see scripts/fetch-lake-history.mjs). Shipped to the
 // browser so the lookup answers from the same numbers the chart draws, with no network call.
 export const POWELL_HISTORY_DAILY = String((powellHistory as any).daily ?? '');
 export const POWELL_HISTORY_DAILY_START = String((powellHistory as any).dailyStart ?? '');
@@ -328,6 +328,45 @@ export const POWELL_HISTORY_SOURCE: string =
   (powellHistory as any)?.source ?? 'https://www.usbr.gov/uc/water/hydrodata/reservoir_data/919/csv/49.csv';
 export const POWELL_HISTORY_CATALOG: string =
   (powellHistory as any)?.catalog ?? 'https://data.usbr.gov/catalog/2362/item/508';
+
+// Lake Travis carries the same shape from a different agency. There is no Reclamation file for
+// an LCRA reservoir; the Texas Water Development Board publishes the complete daily record at
+// waterdatafortexas.org (daily estimates from 1940-09-30, monthly rows while the lake filled
+// behind Mansfield Dam, daily afterwards) and scripts/fetch-lake-history.mjs reads it through
+// its 'twdb' adapter. Elevations are feet above the datum TWDB states in the file (NAVD88 + 0.6).
+import travisHistory from '../data/travis-history.json';
+export const TRAVIS_HISTORY = (travisHistory as any).stats as PowellHistoryStats;
+export const TRAVIS_HISTORY_MONTHLY = ((travisHistory as any).monthly ?? []) as [string, number][];
+export const TRAVIS_HISTORY_DAILY = String((travisHistory as any).daily ?? '');
+export const TRAVIS_HISTORY_DAILY_START = String((travisHistory as any).dailyStart ?? '');
+export const TRAVIS_HISTORY_SOURCE: string =
+  (travisHistory as any)?.source ?? 'https://www.waterdatafortexas.org/reservoirs/individual/travis.csv';
+export const TRAVIS_HISTORY_CATALOG: string =
+  (travisHistory as any)?.catalog ?? 'https://www.waterdatafortexas.org/reservoirs/individual/travis';
+
+// Mansfield Dam landmarks. Every value is LCRA-published at
+// https://www.lcra.org/water/dams-and-lakes/ and is quoted here verbatim so no figure is typed
+// from memory:
+//   "Lake Travis is considered full for water supply purposes at 681 feet msl"
+//   "Overflow spillway elevation 714 feet msl"
+//   "100-year flood level at dam 722 feet msl"
+//   "Top of dam 750 feet msl"
+//   "Historic high 710.44 feet msl on Dec. 25, 1991"
+//   "Historic low 614.18 feet msl on Aug. 14, 1951"
+// LCRA states its figures are based on daily readings at 8 a.m. The TWDB daily file computes the
+// same low to the hundredth on the same day; its high lands at 710.31 ft on 1991-12-26, a
+// different measurement of the same crest, which is why the LCRA figure is carried here and the
+// computed one stays in TRAVIS_HISTORY, each labelled with its source.
+export const TRAVIS_BAND = {
+  fullPoolFt: 681,
+  spillwayFt: 714,
+  floodLevel100yrFt: 722,
+  topOfDamFt: 750,
+  historicHighFt: 710.44,
+  historicHighDate: '1991-12-25',
+  historicLowFt: 614.18,
+  historicLowDate: '1951-08-14',
+};
 
 // Compare a reading to a fixed mark and return the MAGNITUDE plus the direction word,
 // so no template ever prints a signed number into a hardcoded "above". A reading equal

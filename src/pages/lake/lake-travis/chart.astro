@@ -455,7 +455,7 @@ const ld = [articleLd, datasetLd, speakableLd(PATH), authorLd(),
           var drange = document.getElementById('daily-range');
           var NS = 'http://www.w3.org/2000/svg';
           var DW = 960, DH = 300, DPL = 56, DPR = 16, DPT = 14, DPB = 28;
-          var MARKS = [[FULL, 'Full'], [SPILL, 'Spillway'], [HIGH, 'LCRA high'], [LOW, 'LCRA low']];
+          var MARKS = [[FULL, 'Full', -4], [SPILL, 'Spillway', -4], [HIGH, 'LCRA high', 12], [LOW, 'LCRA low', 12]];
           var view = { i0: 0, i1: 0, yMin: 0, yMax: 1 };
 
           function el(name, attrs) {
@@ -508,7 +508,7 @@ const ld = [articleLd, datasetLd, speakableLd(PATH), authorLd(),
               var v = MARKS[m][0];
               if (v < view.yMin || v > view.yMax) { continue; }
               dsvg.appendChild(el('line', { x1: DPL, y1: dy(v), x2: DW - DPR, y2: dy(v), stroke: 'currentColor', 'stroke-opacity': 0.42, 'stroke-width': 1, 'stroke-dasharray': '5 4' }));
-              dsvg.appendChild(txt(DW - DPR, dy(v) - 4, MARKS[m][1] + ' ' + v + ' ft', 'end', 0.7));
+              dsvg.appendChild(txt(DW - DPR, dy(v) + MARKS[m][2], MARKS[m][1] + ' ' + v + ' ft', 'end', 0.7));
             }
           }
 
@@ -574,12 +574,18 @@ const ld = [articleLd, datasetLd, speakableLd(PATH), authorLd(),
 
     <section class="section airy">
       <h2>Questions about the Lake Travis record</h2>
-      <p class="readable"><strong>How far back does this chart go?</strong> To {fmtRecordDate(h.recordStart)}, the first row in the TWDB file for Lake Travis. The file carries {h.totalDays.toLocaleString('en-US')} rows through {fmtRecordDate(h.recordEnd)}, month-end rows in the earliest years and daily rows after that.</p>
-      <p class="readable"><strong>Is this the lowest Lake Travis has ever been?</strong> {postLowFt != null && postLowDate ? <>No. LCRA's historic low is {fmtNum(band.historicLowFt, 2)} ft on {fmtRecordDate(band.historicLowDate)}, and the lowest reading in the file since the reservoir first filled is {fmtNum(postLowFt, 2)} ft on {fmtRecordDate(postLowDate)}. Today sits {vsLow ? vsLow.text : 'n/a'} LCRA's mark.</> : <>LCRA's historic low is {fmtNum(band.historicLowFt, 2)} ft on {fmtRecordDate(band.historicLowDate)}, and today sits {vsLow ? vsLow.text : 'n/a'} it.</>}</p>
-      <p class="readable"><strong>What was the highest?</strong> LCRA's historic high is {fmtNum(band.historicHighFt, 2)} ft on {fmtRecordDate(band.historicHighDate)}. The highest row in the TWDB file is {fmtNum(h.recordHighFt, 2)} ft on {fmtRecordDate(h.recordHighDate)}, which is {vsHighFull ? vsHighFull.text : 'n/a'} the {fmtNum(band.fullPoolFt, 0)} ft full mark and still under the {fmtNum(band.spillwayFt, 0)} ft spillway.</p>
-      <p class="readable"><strong>What does full mean at Lake Travis?</strong> LCRA lists the lake as full for water supply purposes at {fmtNum(band.fullPoolFt, 0)} ft msl. That is the top of the water supply pool, not the top of the dam. The flood pool above it is designed space, and the lake has been above {fmtNum(band.fullPoolFt, 0)} ft many times in the record without reaching the spillway.</p>
-      <p class="readable"><strong>Why does this chart differ from the live reading elsewhere on the site?</strong> Because they are different series. This chart plots TWDB's daily file. The live reading on <a href="/lake/lake-travis/">the Lake Travis page</a> comes from <a href={USGS_SITE}>USGS site 08154500</a>, an instantaneous value which USGS notes is obtained from LCRA. A daily value and an instantaneous one will differ by a tenth of a foot or so on any given day, which is a difference in sampling rather than a disagreement.</p>
-      <p class="readable"><strong>How often does it update?</strong> The file is refetched and every figure on this page recomputed on each build, which runs daily.</p>
+      <h3>How far back does this chart go?</h3>
+      <p class="readable">To {fmtRecordDate(h.recordStart)}, the first row in the TWDB file for Lake Travis. The file carries {h.totalDays.toLocaleString('en-US')} rows through {fmtRecordDate(h.recordEnd)}, month-end rows in the earliest years and daily rows after that.</p>
+      <h3>Is this the lowest Lake Travis has ever been?</h3>
+      <p class="readable">{postLowFt != null && postLowDate ? <>No. LCRA's historic low is {fmtNum(band.historicLowFt, 2)} ft on {fmtRecordDate(band.historicLowDate)}, and the lowest reading in the file since the reservoir first filled is {fmtNum(postLowFt, 2)} ft on {fmtRecordDate(postLowDate)}. Today sits {vsLow ? vsLow.text : 'n/a'} LCRA's mark.</> : <>LCRA's historic low is {fmtNum(band.historicLowFt, 2)} ft on {fmtRecordDate(band.historicLowDate)}, and today sits {vsLow ? vsLow.text : 'n/a'} it.</>}</p>
+      <h3>What was the highest?</h3>
+      <p class="readable">LCRA's historic high is {fmtNum(band.historicHighFt, 2)} ft on {fmtRecordDate(band.historicHighDate)}. The highest row in the TWDB file is {fmtNum(h.recordHighFt, 2)} ft on {fmtRecordDate(h.recordHighDate)}, which is {vsHighFull ? vsHighFull.text : 'n/a'} the {fmtNum(band.fullPoolFt, 0)} ft full mark and still under the {fmtNum(band.spillwayFt, 0)} ft spillway.</p>
+      <h3>What does full mean at Lake Travis?</h3>
+      <p class="readable">LCRA lists the lake as full for water supply purposes at {fmtNum(band.fullPoolFt, 0)} ft msl. That is the top of the water supply pool, not the top of the dam. The flood pool above it is designed space, and the lake has been above {fmtNum(band.fullPoolFt, 0)} ft many times in the record without reaching the spillway.</p>
+      <h3>Why does this chart differ from the live reading elsewhere on the site?</h3>
+      <p class="readable">Because they are different series. This chart plots TWDB's daily file. The live reading on <a href="/lake/lake-travis/">the Lake Travis page</a> comes from <a href={USGS_SITE}>USGS site 08154500</a>, an instantaneous value which USGS notes is obtained from LCRA. A daily value and an instantaneous one will differ by a tenth of a foot or so on any given day, which is a difference in sampling rather than a disagreement.</p>
+      <h3>How often does it update?</h3>
+      <p class="readable">The file is refetched and every figure on this page recomputed on each build, which runs daily.</p>
     </section>
 
     <section class="section airy">

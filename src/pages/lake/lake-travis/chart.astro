@@ -525,7 +525,7 @@ const ld = [articleLd, datasetLd, speakableLd(PATH), authorLd(),
 
           function redraw(days) {
             if (!dsvg || !dates.length) return;
-            while (dsvg.firstChild) dsvg.removeChild(dsvg.firstChild);
+            for (var c = 0; c < 4000 && dsvg.firstChild; c++) dsvg.removeChild(dsvg.firstChild);   // bounded clear
             setRange(days);
             drawAxes();
             drawMarks();

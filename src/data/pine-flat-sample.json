@@ -1,0 +1,18 @@
+{
+  "source": "CDEC",
+  "station": "PNF",
+  "sourceUrl": "https://cdec.water.ca.gov/dynamicapp/staMeta?station_id=PNF",
+  "recordStart": "1985-01-01",
+  "recordEnd": "2026-08-06",
+  "observations": 13451,
+  "artifactSha256": "7f394e9063d441d749b7852871fe35b55073a372a5b973cb0fe3877244a53bef",
+  "month": "September",
+  "monthlyObservations": 1101,
+  "p25Ft": 726.21,
+  "medianFt": 762.04,
+  "p75Ft": 827.8,
+  "exampleThresholdFt": 800,
+  "belowThresholdObservations": 680,
+  "belowThresholdPercent": 61.8,
+  "method": "September rows only, strictly below 800 ft; observed days are counted equally, missing dates are excluded; source uses CDEC station datum. Derived from the currently delivered product ZIP."
+}

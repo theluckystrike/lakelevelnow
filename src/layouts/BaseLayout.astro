@@ -44,6 +44,12 @@ const ld = [organizationLd(), websiteLd(), ...jsonLd];
           catch (_) { /* no fetch: the hit is dropped, the page is not */ }
         }
         window.__almHit = hit;
+        document.addEventListener('toggle', function (ev) {
+          var el = ev.target;
+          if (!el || !el.matches || !el.matches('details[data-alm-sample]') || !el.open || el.dataset.sampleCounted) return;
+          el.dataset.sampleCounted = '1';
+          hit('sample_view', el.getAttribute('data-alm-sample'), 'pine-flat-sample');
+        }, true);
         var path = location.pathname.replace(/\/+$/, '');
         if (path === '/almanac') hit('alm_view', '', '');
         if (path === '/almanac/thanks') hit('thanks_view', '', '');

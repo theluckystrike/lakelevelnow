@@ -93,12 +93,20 @@
     return /^[a-z0-9-]{1,40}$/.test(place || '') ? place : section.hasAttribute('data-mt-paywall') ? 'paywall' : section.tagName.toLowerCase();
   }
   function payload(product, anchor) {
-    return { currency: 'USD', value: product.price, items: [product], placement: placement(anchor) };
+    return { currency: 'USD', value: product.price, items: [product], placement: placement(anchor),
+      ...(lake && /^\/lake\/[a-z0-9-]+$/.test(path) ? { lake_slug: path.split('/')[2] } : {}) };
   }
   if (lake ? path === '/almanac' : path === '/pro' || path === '/kitchen-pack') {
     event('pricing_view', { content_id: lake ? 'almanac' : 'ingredientcalculator_pro' }, 'pricing_view');
   }
   if (lake && path === '/almanac/sample') event('sample_view', { content_id: 'almanac_sample' }, 'sample_view');
+  document.addEventListener('toggle', function (ev) {
+    var detail = ev.target;
+    if (!lake || !detail || !detail.matches || !detail.matches('details[data-alm-sample]') || !detail.open) return;
+    var slug = detail.getAttribute('data-alm-sample');
+    if (!/^[a-z0-9-]{1,40}$/.test(slug || '')) return;
+    event('sample_open', { content_id: slug, placement: 'pine-flat-sample' }, 'sample_open:' + slug);
+  }, true);
   document.addEventListener('click', function (ev) {
     var anchor = ev.target && ev.target.closest ? ev.target.closest('a') : null;
     if (!anchor || anchor.getAttribute('aria-disabled') === 'true') return;

@@ -17,7 +17,7 @@ const href = SINGLE ? `${SINGLE}?client_reference_id=${slug}` : '/almanac/';
     {leadSentence(alm)}
     {' '}<a href={href} data-alm-cta="lake" data-lake={slug} data-alm-place="lake-top"
       rel="nofollow">Full {name} almanac, ${PRICE_SINGLE} &rarr;</a>
-    {' '}<a class="alm-peek-more" href={`#alm-h-${slug}`}>what is in it</a>
+    {' '}<a class="alm-peek-more" href={slug === 'pine-flat-lake' ? '#pine-flat-sample' : `#alm-h-${slug}`}>{slug === 'pine-flat-lake' ? 'See Pine Flat sample' : 'what is in it'}</a>
   </p>
 )}
 

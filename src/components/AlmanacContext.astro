@@ -24,6 +24,7 @@
 // If the live reading is missing or stale, the block falls back to the snapshot figure and
 // says which date it belongs to, rather than implying the stale number is today's.
 import data from '../data/almanac.json';
+import sample from '../data/pine-flat-sample.json';
 import { almanacContext, leadSentence } from '../lib/almanac';
 
 interface Props {
@@ -51,6 +52,29 @@ const fmt = (n: number, d = 2) =>
     <h2 id={`alm-h-${slug}`} class="alm-ctx-h">Is that normal for the date?</h2>
     <p class="alm-ctx-lead">{lead}</p>
 
+    {showCta && slug === 'pine-flat-lake' && (
+      <div class="pine-sample" id="pine-flat-sample" data-alm-place="pine-flat-sample">
+        <h3>A real Pine Flat sample: September history</h3>
+        <p>The middle half of recorded September elevations was <strong>{fmt(sample.p25Ft)}–{fmt(sample.p75Ft)} ft</strong>.
+          The median was {fmt(sample.medianFt)} ft. This is historical context, not today&rsquo;s reading.</p>
+        <details data-alm-sample="pine-flat-lake">
+          <summary>See the threshold example and source</summary>
+          <p>For an <strong>illustrative {sample.exampleThresholdFt} ft threshold</strong>, {sample.belowThresholdObservations} of
+            {' '}{sample.monthlyObservations.toLocaleString('en-US')} recorded September days ({sample.belowThresholdPercent}%) were below it.
+            This is not a published ramp elevation or a forecast.</p>
+          <p>The purchased file lets you enter your own verified ramp or dock elevation and explore the full record.
+            Match its vertical datum to the lake readings before comparing. Historical water levels cannot confirm
+            ramp access or a safe launch; check with the operator.</p>
+          <p>Source: <a href={sample.sourceUrl}>CDEC station PNF, elevation sensor 6</a>, {sample.recordStart} to {sample.recordEnd}.
+            September observations only; missing days excluded and each observed day counted equally.
+            The 25th–75th percentiles describe the middle half, not a guaranteed operating range.</p>
+        </details>
+        <p class="pine-value">Free above: the current reading and its historical context.
+          The ${data.priceSingleUsd} download adds the offline almanac, all 366 daily normal ranges,
+          threshold explorer and CSV records for Pine Flat. One payment; no subscription.</p>
+      </div>
+    )}
+
     {/* Ask before evidence, not after. Measured on a 390px phone, moving the button above
         the provenance paragraph lifts it roughly 200px, and the reader who is already
         convinced by the lead sentence should not have to scroll past a citation to act.
@@ -59,7 +83,7 @@ const fmt = (n: number, d = 2) =>
       <div class="alm-ctx-cta" data-alm-place="lake">
         <a class="alm-ctx-btn" href={buy} rel="nofollow"
            data-alm-cta="lake" data-lake={slug}>
-          The full {lake.name} almanac, ${data.priceSingleUsd}
+          {slug === 'pine-flat-lake' ? `Get Pine Flat history + threshold tool, $${data.priceSingleUsd}` : `The full ${lake.name} almanac, $${data.priceSingleUsd}`}
         </a>
         <span class="alm-ctx-micro">
           {lake.years} years of daily record, the normal band for all 366 days, and a tool that
@@ -67,7 +91,8 @@ const fmt = (n: number, d = 2) =>
           Instant download.
         </span>
         <span class="alm-ctx-more">
-          <a href="/almanac/sample/">See a sample almanac (Lake Powell)</a>
+          {slug === 'pine-flat-lake' ? <a href="#pine-flat-sample">Pine Flat sample above</a> :
+            <a href="/almanac/sample/">See a sample almanac (Lake Powell)</a>}
           <span class="alm-ctx-sep" aria-hidden="true">&middot;</span>
           <a href={bundle} data-alm-cta="bundle" rel="nofollow">or all {data.lakeCount} lakes
           for ${data.priceBundleUsd}</a>
@@ -90,6 +115,11 @@ const fmt = (n: number, d = 2) =>
 )}
 
 <style>
+  .pine-sample { margin-top: 16px; padding: 14px; border: 1px solid var(--border); border-radius: 8px; }
+  .pine-sample h3 { font-size: 17px; margin: 0 0 10px; }
+  .pine-sample p { font-size: 14px; line-height: 1.55; margin: 10px 0; }
+  .pine-sample summary { cursor: pointer; padding: 10px 0; font-weight: 600; font-size: 14px; }
+  .pine-value { color: var(--t2); }
   .alm-ctx { border: 1px solid var(--border); border-left: 4px solid var(--teal);
     border-radius: 0 10px 10px 0; padding: 20px 22px; margin: 22px 0; background: var(--card); }
   .alm-ctx-h { font-size: 15px; margin: 0 0 10px; color: var(--t2);

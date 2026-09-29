@@ -3,7 +3,7 @@ import fs from 'node:fs';
 import assert from 'node:assert/strict';
 const listeners = {};
 const loc = {pathname:'/lake/pine-flat-lake/',origin:'https://lakelevelnow.com',search:'',href:'https://lakelevelnow.com/lake/pine-flat-lake/'};
-const document = {currentScript:{getAttribute:k=>k==='data-site'?'lakelevelnow':'G-MCP0XQ03E3'},referrer:'',readyState:'loading',head:{appendChild(){}},createElement:()=>({}),dispatchEvent(){},addEventListener:(n,fn)=>{(listeners[n]??=[]).push(fn);}};
+const document = {currentScript:{getAttribute:k=>k==='data-site'?'lakelevelnow':'G-LYY6FMNH6R'},referrer:'',readyState:'loading',head:{appendChild(){}},createElement:()=>({}),dispatchEvent(){},addEventListener:(n,fn)=>{(listeners[n]??=[]).push(fn);}};
 const window = {};
 vm.runInNewContext(fs.readFileSync('public/ga4.js','utf8'),{document,window,navigator:{},location:loc,URL,URLSearchParams,Event:class{},Set,localStorage:{getItem:()=>null,setItem(){}}});
 const events=()=>window.dataLayer.map(a=>Array.from(a)).filter(a=>a[0]==='event');

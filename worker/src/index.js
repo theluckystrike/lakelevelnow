@@ -130,10 +130,18 @@ function lakeCandidates(session) {
 
 // Returns { slug, tried }; slug is the canonical catalog slug or null.
 // Both sides are normalised so "lakepowell" matches "lake-powell".
-function resolveLake(session, cat) {
+export function resolveLake(session, cat) {
   const tried = lakeCandidates(session);
   const lakes = cat.lakes || [];
   for (const c of tried) {
+    // A click reference keeps the exact catalog slug before a strict opaque suffix.
+    // Legacy slug-only Payment Links and Checkout custom-field selections still work.
+    const composite = /^([a-z0-9-]{1,40})--([a-f0-9]{32})$/.exec(c);
+    if (composite) {
+      const hit = lakes.find((l) => l.slug === composite[1]);
+      if (hit) return { slug: hit.slug, tried };
+      continue;
+    }
     const n = norm(c);
     if (!n) continue;
     const hit = lakes.find((l) => norm(l.slug) === n);
@@ -263,15 +271,23 @@ async function handleHit(url, request, env, ch) {
   const done = () => new Response(null, { status: 204, headers });
   const event = url.searchParams.get("e") || "";
   if (!HIT_EVENTS.includes(event)) return done();
+  if (request.headers.get("Sec-GPC") === "1" || request.headers.get("DNT") === "1") return done();
   if (!HIT_HOSTS.includes(hitHost(request))) return done();
   const lake = sanitiseDim(url.searchParams.get("l"));
   const place = sanitiseDim(url.searchParams.get("p"));
+  const attempt = url.searchParams.get("a") || "";
   const day = new Date().toISOString().slice(0, 10);
   const keys = [`hits:${day}:${event}`];
   if (lake) keys.push(`hits:${day}:${event}:${lake}`);
   if (place) keys.push(`hits:${day}:${event}:p:${place}`);
   const n = Math.min(keys.length, MAX_HIT_WRITES);
   for (let i = 0; i < n; i++) await bump(env, keys[i]);
+  if (event === "checkout_open" && /^[a-f0-9]{32}$/.test(attempt)) {
+    // The immutable anonymous click receipt joins to Stripe's client_reference_id.
+    // Never store IP, browser details, email, or the Stripe Checkout URL here.
+    await env.ALMANAC_ORDERS.put(`click:${day}:${attempt}`,
+      JSON.stringify({ lake, placement: place }), { expirationTtl: COUNTER_TTL_S });
+  }
   return done();
 }
 

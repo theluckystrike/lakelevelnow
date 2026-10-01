@@ -37,9 +37,13 @@ const ld = [organizationLd(), websiteLd(), ...jsonLd];
       (function () {
         var B = 'https://lake-level-almanac.lipmichal.workers.dev/hit';
         var ok = /^[a-z0-9-]{0,40}$/;
+        var optedOut = navigator.globalPrivacyControl === true ||
+          navigator.doNotTrack === '1' || window.doNotTrack === '1';
         function tok(v) { v = String(v || ''); return ok.test(v) ? v : ''; }
-        function hit(e, l, p) {
-          var u = B + '?e=' + e + '&l=' + tok(l) + '&p=' + tok(p);
+        function hit(e, l, p, attemptId) {
+          if (optedOut) return;
+          var u = B + '?e=' + e + '&l=' + tok(l) + '&p=' + tok(p) +
+            (/^[a-f0-9]{32}$/.test(attemptId || '') ? '&a=' + attemptId : '');
           try { fetch(u, { method: 'GET', keepalive: true, mode: 'no-cors' }).catch(function () {}); }
           catch (_) { /* no fetch: the hit is dropped, the page is not */ }
         }
@@ -62,7 +66,23 @@ const ld = [organizationLd(), websiteLd(), ...jsonLd];
           var a = t.closest('a[data-alm-buy],a[data-alm-cta],.alm-home-btn');
           if (!a || (a.getAttribute('href') || '').indexOf('https://buy.stripe.com') !== 0) return;
           var m = /client_reference_id=([a-z0-9-]{1,40})/.exec(a.href);
-          hit('checkout_open', a.getAttribute('data-lake') || (m ? m[1] : 'bundle'), p);
+          var slug = a.dataset.checkoutBaseRef || a.getAttribute('data-lake') || (m ? m[1] : 'bundle');
+          a.dataset.checkoutBaseRef = slug;
+          // Stripe's reference must retain the lake slug: the fulfilment Worker uses it
+          // to choose the purchased ZIP. Add a fresh opaque click suffix only when
+          // measurement is allowed; old static links remain valid as a fallback.
+          var attempt = '';
+          if (!optedOut && /^[a-z0-9-]{1,40}$/.test(slug) &&
+              window.crypto && typeof window.crypto.randomUUID === 'function') {
+            attempt = window.crypto.randomUUID().replace(/-/g, '');
+            if (/^[a-f0-9]{32}$/.test(attempt)) {
+              var dest = new URL(a.href);
+              dest.searchParams.set('client_reference_id', slug + '--' + attempt);
+              a.href = dest.href;
+              a.dataset.checkoutAttemptId = attempt;
+            }
+          }
+          hit('checkout_open', slug, p, attempt);
         }, true);
       })();
     </script>

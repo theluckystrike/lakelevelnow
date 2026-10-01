@@ -16,6 +16,11 @@ const anchor={href:'https://buy.stripe.com/00w3cw2oafoc7VXgjj43S0q?client_refere
 listeners.click[0]({target:{closest:()=>anchor}});
 const checkout=events().find(a=>a[1]==='begin_checkout');
 assert.equal(checkout[2].lake_slug,'pine-flat-lake');assert.equal(checkout[2].value,19);
+anchor.dataset={checkoutAttemptId:'0123456789abcdef0123456789abcdef'};
+listeners.click[0]({target:{closest:()=>anchor}});
+const checkouts=events().filter(a=>a[1]==='begin_checkout');
+assert.equal(checkouts.length,2,'each paid click is a separate checkout attempt');
+assert.equal(checkouts[1][2].checkout_attempt_id,anchor.dataset.checkoutAttemptId);
 assert.equal(events().filter(a=>a[1]==='purchase').length,0);
 const html=fs.readFileSync('dist/lake/pine-flat-lake/index.html','utf8');
 for (const text of ['762.04','726.21','827.80','680','1,101','61.8','not a published ramp elevation','data-alm-sample="pine-flat-lake"','client_reference_id=pine-flat-lake','Free above:']) assert.ok(html.includes(text),text);

@@ -93,8 +93,11 @@
     return /^[a-z0-9-]{1,40}$/.test(place || '') ? place : section.hasAttribute('data-mt-paywall') ? 'paywall' : section.tagName.toLowerCase();
   }
   function payload(product, anchor) {
+    var anchorLake = anchor.getAttribute('data-lake');
+    var lakeSlug = /^[a-z0-9-]{1,40}$/.test(anchorLake || '') ? anchorLake :
+      /^\/lake\/[a-z0-9-]+$/.test(path) ? path.split('/')[2] : '';
     return { currency: 'USD', value: product.price, items: [product], placement: placement(anchor),
-      ...(lake && /^\/lake\/[a-z0-9-]+$/.test(path) ? { lake_slug: path.split('/')[2] } : {}) };
+      ...(lake && lakeSlug ? { lake_slug: lakeSlug } : {}) };
   }
   if (lake ? path === '/almanac' : path === '/pro' || path === '/kitchen-pack') {
     event('pricing_view', { content_id: lake ? 'almanac' : 'ingredientcalculator_pro' }, 'pricing_view');
@@ -112,7 +115,10 @@
     if (!anchor || anchor.getAttribute('aria-disabled') === 'true') return;
     var product = productFor(anchor);
     if (product) {
-      event('begin_checkout', payload(product, anchor), 'checkout:' + product.item_id);
+      var checkout = payload(product, anchor);
+      var attempt = anchor.dataset && anchor.dataset.checkoutAttemptId;
+      if (lake && /^[a-f0-9]{32}$/.test(attempt || '')) checkout.checkout_attempt_id = attempt;
+      event('begin_checkout', checkout);
       return;
     }
     var url;
@@ -129,7 +135,10 @@
       entries.forEach(function (entry) {
         if (!entry.isIntersecting || entry.intersectionRatio < 0.5) return;
         var product = productFor(entry.target);
-        if (product) event('view_item', payload(product, entry.target), 'offer:' + product.item_id);
+        if (product) {
+          var offer = payload(product, entry.target);
+          event('view_item', offer, 'offer:' + product.item_id + ':' + offer.placement + ':' + (offer.lake_slug || 'bundle'));
+        }
         observer.unobserve(entry.target);
       });
     }, { threshold: 0.5 });

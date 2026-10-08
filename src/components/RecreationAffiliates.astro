@@ -1,0 +1,24 @@
+---
+// Recreation-affiliate box, ready for the owner's partner links. NOT rendered yet: the
+// lake page keeps it commented out until FishingBooker and Boatsetter approve the
+// applications and the tracked links are pasted into AFFILIATES in src/consts.ts.
+// Optional per-lake charter link: lake.fb_url (add to src/data/lakes.seed.json).
+// Every link is rel="sponsored nofollow" and the small print is the visible disclosure.
+import { AFFILIATES } from '../consts';
+interface Props { name: string; fbUrl?: string | null }
+const { name, fbUrl } = Astro.props;
+const ok = (v?: string | null) => !!v && v !== 'REPLACE_ME' && /^https:\/\//.test(v);
+const charter = ok(fbUrl) ? fbUrl : (ok(AFFILIATES.fishingbooker) ? AFFILIATES.fishingbooker : '');
+const rental = ok(AFFILIATES.boatsetter) ? AFFILIATES.boatsetter : '';
+---
+{(charter || rental) && (
+  <>
+    <h3>Heading to {name}?</h3>
+    <p>Local guides know which ramps are working at today's level. Compare guided fishing trips with reviews and prices, or rent a boat if yours is stuck at home.</p>
+    <div class="row">
+      {charter && <a class="btn" href={charter} rel="sponsored nofollow noopener">See fishing charters on {name}</a>}
+      {rental && <a class="btn ghost" href={rental} rel="sponsored nofollow noopener">Rent a boat nearby</a>}
+    </div>
+    <p class="mut" style="font-size:12px;color:var(--t2);margin-top:8px;">We earn a commission if you book, at no cost to you. <a href="/disclosure">Disclosure</a>.</p>
+  </>
+)}

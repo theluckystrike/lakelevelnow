@@ -1,0 +1,23 @@
+---
+// Pay-what-you-want support line (footer + end of each lake FAQ). Renders nothing until
+// support.url in src/data/monetization.json holds the Stripe Payment Link, so a missing
+// link never shows a dead button.
+import cfg from '../data/monetization.json';
+interface Props { variant?: 'footer' | 'inline' }
+const { variant = 'inline' } = Astro.props;
+const url = /^https:\/\/buy\.stripe\.com\/[A-Za-z0-9]+$/.test(cfg.support.url || '') ? cfg.support.url : '';
+---
+{url && (
+  <div class={`support-line ${variant}`}>
+    <p>LakeLevelNow is free, ad-light and built by one person. If it saved you a wasted drive to a dry ramp, you can chip in. <span class="sig">Michael</span></p>
+    <a class="btn support-btn" href={url} rel="noopener" data-support-cta={variant}>Chip in $5</a>
+  </div>
+)}
+<style>
+.support-line{display:flex;flex-wrap:wrap;align-items:center;gap:10px 16px;margin-top:20px;max-width:660px}
+.support-line p{margin:0;font-size:14px;line-height:1.6;flex:1 1 320px}
+.support-line.inline p{color:var(--t2)}
+.support-line.footer p{color:rgba(255,255,255,.72)}
+.support-line .sig{white-space:nowrap;font-style:italic}
+.support-line .sig::before{content:"- "}
+</style>

@@ -45,7 +45,7 @@ const USBR_CSV = 'https://www.usbr.gov/uc/water/hydrodata/reservoir_data/919/csv
 // 8 at 6.75 — every one of them at 0.00% CTR. The page was ranking for a question it did not
 // ask in its own title. Leading with the live figure gives the searcher the answer in the SERP.
 const title = live && depth != null
-  ? `How deep is Lake Powell right now? ${fmtNum(depth, 1)} ft today`
+  ? `Lake Powell depth today: ${fmtNum(depth, 1)} ft at the dam (${fmtNum(band.maxDepthFullPoolFt, 0)} ft max)`
   : 'How deep is Lake Powell right now?';
 const description = live && depth != null
   ? `Lake Powell is ${fmtNum(depth, 1)} feet deep at Glen Canyon Dam today, a number computed from the live USGS surface elevation instead of the full-pool figure most articles repeat.`
@@ -65,7 +65,7 @@ const articleLd = {
   mainEntityOfPage: absUrl(PATH),
   datePublished: '2026-07-17',
   dateModified: asOfIso || '2026-07-17',
-  author: { '@type': 'Person', name: 'Mike', url: absUrl('/about/'), description: 'Independent developer behind zovo.one, building small fast utility sites including LakeLevelNow. Works on LakeLevelNow full-time.' },
+  author: { '@type': 'Person', name: 'Michael', url: absUrl('/about/'), description: 'Independent developer behind zovo.one, building small fast utility sites including LakeLevelNow. Works on LakeLevelNow full-time.' },
   publisher: { '@type': 'Organization', name: 'LakeLevelNow', url: absUrl('/') },
 };
 const datasetLd = live && depth != null ? {
@@ -125,7 +125,7 @@ const faqs = [
 
     <div style="padding-top:16px;">
       <h1>How deep is Lake Powell right now?</h1>
-      <p style="font-size:13px;color:var(--t2);margin-top:8px;">By <a href="/about/">Mike</a>, independent developer behind <a href="https://zovo.one" rel="noopener">zovo.one</a>.{asOfFmt && ` Data checked ${asOfFmt}.`}</p>
+      <p style="font-size:13px;color:var(--t2);margin-top:8px;">By <a href="/about/">Michael</a>, independent developer behind <a href="https://zovo.one" rel="noopener">zovo.one</a>.{asOfFmt && ` Data checked ${asOfFmt}.`}</p>
     </div>
 
     {qas && <p class="qas" data-keyword="lake powell water depth" style="font-size:15px;color:var(--t1);margin-top:14px;max-width:660px;font-weight:500;">{qas}</p>}

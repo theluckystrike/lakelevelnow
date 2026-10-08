@@ -1,0 +1,13 @@
+{
+  "_comment": "Owner switches. adsense.slots: paste the two display ad unit IDs (digits only) from AdSense > Ads > By ad unit > Display ads. Until a unit ID is set its slot stays hidden and reserves no space; the AdSense site script still loads for non-EEA/UK/CH visitors so the site can be reviewed. Do NOT turn on Auto ads for this site: it can place an ad above the gauge. support.url: the pay-what-you-want Stripe Payment Link (lln_support); the support line stays hidden while it is empty.",
+  "adsense": {
+    "client": "ca-pub-2241192243363112",
+    "slots": {
+      "lakeMid": "",
+      "lakeEnd": ""
+    }
+  },
+  "support": {
+    "url": ""
+  }
+}

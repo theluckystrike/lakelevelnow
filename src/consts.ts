@@ -21,7 +21,7 @@ export const SITE = {
 // byline on data pages and as schema.org/Person JSON-LD (the H3 authorship signal).
 // Identity matches the /about page: solo developer, also behind zovo.one.
 export const AUTHOR = {
-  name: 'Mike',
+  name: 'Michael',
   role: 'Independent developer',
   blurb: 'independent developer behind zovo.one',
   url: '/about/',
@@ -41,6 +41,14 @@ export const AFFILIATES = {
 } as const;
 
 export const AFFILIATE_REPLACE_ME = Object.values(AFFILIATES).some((v) => v === 'REPLACE_ME');
+
+// Display ads, support link and the per-lake sponsor slot. Owner switches live in
+// src/data/monetization.json (AdSense unit IDs, the pay-what-you-want Stripe link).
+export const SPONSOR_PRICE_USD = 49;
+// Sponsor enquiries go to the inbox the /about page already advertises and that is read
+// (Porkbun-hosted mailbox, forwarded to the owner). hello@lakelevelnow.com is a Porkbun
+// forward whose delivery has not been verified, so money conversations do not use it.
+export const SPONSOR_EMAIL = 'support@zovo.one';
 
 // States covered (the lake registry spans these). Used for the directory + IA.
 export const STATES: { code: string; name: string }[] = [

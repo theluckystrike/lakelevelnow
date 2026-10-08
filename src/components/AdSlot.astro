@@ -1,0 +1,23 @@
+---
+// One AdSense display unit. Lake pages only, always below the gauge and the almanac block,
+// never above them. /ads-loader.js loads Google's script only for visitors whose country
+// (Cloudflare trace on the site's own Worker) is known and outside the EEA, UK and
+// Switzerland. There is no certified consent tool here, so in those regions, or when the
+// country is unknown, nothing ad-related loads and the slot collapses. Space (280px) is
+// reserved only once a unit ID is configured, so an unconfigured slot never shifts layout.
+import cfg from '../data/monetization.json';
+interface Props { slot: 'lakeMid' | 'lakeEnd' }
+const { slot } = Astro.props;
+const client = cfg.adsense.client;
+const id = (cfg.adsense.slots as Record<string, string>)[slot] || '';
+const reserved = /^\d{6,20}$/.test(id);
+---
+<div class="ad-slot" data-ad-client={client} data-ad-slot-id={reserved ? id : undefined} hidden={!reserved} style={reserved ? 'min-height:280px' : undefined}>
+  {reserved && <p class="ad-label">Advertisement</p>}
+</div>
+<script is:inline src="/ads-loader.js" defer></script>
+<style>
+.ad-slot{margin:32px 0;text-align:center;overflow:hidden}
+.ad-slot[hidden]{display:none}
+.ad-slot .ad-label{font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--t3);margin:0 0 6px}
+</style>

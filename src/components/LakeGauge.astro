@@ -63,6 +63,7 @@ const deltaUp = (reading.delta_24h ?? 0) >= 0;
     </div>
     <div class="src-foot">
       <span class="src-badge">{feedLabel(reading.feed) || reading.feed}</span>
+      {reading.pct_source === 'twdb' && <span class="src-badge" title="Percent full: Texas Water Development Board daily estimate">TWDB % full</span>}
       <span style="font-size:11px;color:var(--t3);">{reading.storage_af != null ? `${fmtNum(reading.storage_af,0)} acre-ft · ` : ''}updated {asOf}</span>
     </div>
   </div>

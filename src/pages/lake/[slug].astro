@@ -3,8 +3,11 @@ import BaseLayout from '../../layouts/BaseLayout.astro';
 import LakeGauge from '../../components/LakeGauge.astro';
 import AlmanacContext from '../../components/AlmanacContext.astro';
 import AlmanacPeek from '../../components/AlmanacPeek.astro';
+import AdSlot from '../../components/AdSlot.astro';
+import SupportLine from '../../components/SupportLine.astro';
+// import RecreationAffiliates from '../../components/RecreationAffiliates.astro'; // enable with the box below
 import { almanacContext, titleClause, descriptionClause } from '../../lib/almanac';
-import { SITE, AFFILIATES } from '../../consts';
+import { SITE, AUTHOR, SPONSOR_PRICE_USD, SPONSOR_EMAIL } from '../../consts';
 import { LAKES, getReading, launchRead, status, fmtNum, stateName, POWELL_BAND, changeOverSeries, liveBandBelowFullPct, feedLabel, POWELL_HISTORY, compareToMark, fmtRecordDate} from '../../lib/lakes';
 import { lakeLd, authorLd, breadcrumbLd, speakableLd } from '../../lib/seo';
 
@@ -26,11 +29,26 @@ const levelPhrase = reading?.pct_full != null ? `${reading.pct_full}% full` : (r
 // same numberless boilerplate, so the snippet gave a searcher asking "what is the level"
 // no reason to choose it over a competitor whose snippet shows the figure. Both strings
 // degrade to the old copy when no fresh reading exists, so a stale lake never claims one.
+// 2026-10-08: percent full AND feet when both exist. The SERP's reference answer for the
+// Texas lakes is TWDB's percent full (Medina: 17,084 impressions at 0.17% CTR with a
+// feet-only title), so TWDB percent now rides alongside the USGS elevation.
+const livePct = live ? reading!.pct_full : null;
+const liveFt = live ? reading!.level_ft : null;
 const liveFigure = live
-  ? (reading!.pct_full != null
-      ? `${reading!.pct_full}% full`
-      : (reading!.level_ft != null ? `${fmtNum(reading!.level_ft, 1)} ft` : null))
+  ? (livePct != null && liveFt != null
+      ? (slug === 'lake-mead'
+          ? `${fmtNum(liveFt, 1)} ft, ${livePct}% full (live)`
+          : `${livePct}% full, ${fmtNum(liveFt, 1)} ft`)
+      : livePct != null
+        ? `${livePct}% full`
+        : (liveFt != null ? `${fmtNum(liveFt, 1)} ft` : null))
   : null;
+// Who published the percent: TWDB for Texas, otherwise the lake's own feed (CDEC/USBR).
+const pctSourceLabel = reading?.pct_source === 'twdb' ? 'TWDB' : (feedLabel(reading?.pct_source || reading?.feed) || 'USGS');
+// Shorter search names where the registry name costs clicks ("Lake Fork Reservoir") or
+// collides with other states ("Canyon Lake").
+const TITLE_NAME: Record<string, string> = { 'lake-fork': 'Lake Fork', 'canyon-lake': 'Canyon Lake TX' };
+const titleName = TITLE_NAME[slug] || lake.name;
 // Day-of-year context, where a long enough record exists. Computed from the SAME live
 // reading the gauge shows, against a published quantile ladder, so the snippet, the block
 // further down and the number at the top of the page cannot drift apart on a site that
@@ -43,8 +61,11 @@ const alm = almanacContext(slug, live ? reading!.level_ft : null, live ? reading
 const titleCtx = alm ? titleClause(alm) : '';
 const descCtx = alm ? descriptionClause(alm) : '';
 
+const titleBase = liveFigure ? `${titleName} water level today: ${liveFigure}` : '';
+// The context clause is dropped when it would push the title past 60 characters
+// (before the " | LakeLevelNow" suffix), so the figure is never the part Google cuts.
 const title = liveFigure
-  ? `${lake.name} water level today: ${liveFigure}${titleCtx}`
+  ? ((titleBase + titleCtx).length <= 60 ? titleBase + titleCtx : titleBase)
   : `${lake.name} water level`;
 // feet_from_full comes straight off the validated reading; the fuller feetBelowFull
 // fallback is computed further down and is not needed (or available) this early.
@@ -52,17 +73,22 @@ const metaFeetFromFull = live ? (reading!.feet_from_full ?? null) : null;
 const belowFullPhrase = metaFeetFromFull != null
   ? `, ${fmtNum(Math.abs(metaFeetFromFull), 1)} ft ${metaFeetFromFull > 0 ? 'below' : 'above'} full pool`
   : '';
+const descLead = livePct != null && liveFt != null
+  ? `${lake.name} is ${livePct}% full (${pctSourceLabel}) at ${fmtNum(liveFt, 1)} ft on ${asOfFmt}${belowFullPhrase}.`
+  : `${lake.name} is ${liveFigure}${belowFullPhrase} as of ${asOfFmt}.`;
 const description = liveFigure
   ? (descCtx
-      ? `${lake.name} is ${liveFigure}${belowFullPhrase} as of ${asOfFmt}.${descCtx} Live ${feedLabel(reading!.feed) || 'USGS'} gage and 30-day trend.`
-      : `${lake.name} is ${liveFigure}${belowFullPhrase} as of ${asOfFmt}. Live ${feedLabel(reading!.feed) || 'USGS'} gage reading, 30-day trend, and a plain-English boat-launch read.`)
+      ? `${descLead}${descCtx} Live gage and 30-day trend.`
+      : `${descLead} Live ${feedLabel(reading!.feed) || 'USGS'} gage reading, 30-day trend, and a plain-English boat-launch read.`)
   : `${lake.name} water level and percent full: live USGS/CDEC gauge, 30-day trend, and a plain-English boat-launch read.`;
 
 // Quotable Authority Sentence (GEO): declarative, specific, sourced, <25 words.
 let qas = '';
 if (live) {
   const feedName = feedLabel(reading!.feed) || 'USGS';
-  if (reading!.pct_full != null) {
+  if (reading!.pct_full != null && reading!.pct_source === 'twdb' && reading!.level_ft != null) {
+    qas = `${lake.name} is ${reading!.pct_full}% full as of ${asOfFmt}, per the Texas Water Development Board; the ${feedName} gage reads ${fmtNum(reading!.level_ft,1)} ft${reading!.feet_from_full != null ? `, ${fmtNum(Math.abs(reading!.feet_from_full),1)} ft ${reading!.feet_from_full > 0 ? 'below' : 'above'} full pool` : ''}.`;
+  } else if (reading!.pct_full != null) {
     qas = `${lake.name} is ${reading!.pct_full}% full as of ${asOfFmt}, per ${feedName} data${reading!.feet_from_full != null ? `; ${fmtNum(Math.abs(reading!.feet_from_full),1)} ft ${reading!.feet_from_full > 0 ? 'below' : 'above'} full pool` : ''}.`;
   } else if (reading!.level_ft != null) {
     qas = `${lake.name} is at ${fmtNum(reading!.level_ft,1)} ft as of ${asOfFmt}, per ${feedName} data${lake.full_pool_ft != null ? `; full pool is ${fmtNum(lake.full_pool_ft,0)} ft` : ''}.`;
@@ -74,7 +100,7 @@ const faqs = [
       ? (reading!.pct_full != null ? `${lake.name} is about ${reading!.pct_full}% full as of ${asOfFmt}.` : `The most recent reading puts ${lake.name} at ${fmtNum(reading!.level_ft,1)} feet.`)
       : `${lake.name}'s live gage is being connected to ${SITE.name}. Full-pool reference is ${lake.full_pool_ft!=null?fmtNum(lake.full_pool_ft,0)+' ft':'listed on the operator page'}; check the operator (${lake.operator}) for the current figure.` },
   { q: `Can I launch a boat at ${lake.name}?`, a: `${launchRead(reading).text} Individual ramps open and close on their own schedules and on local hazards.` },
-  { q: `Where does ${lake.name}'s level come from?`, a: `${SITE.name} pulls it from the ${feedLabel(reading?.feed) || 'operator'} public water-data feed${feedLabel(reading?.feed) === 'CDEC' ? ' (California Data Exchange)' : feedLabel(reading?.feed) === 'USBR' ? ' (U.S. Bureau of Reclamation)' : ''}. The reading is timestamped in the gauge above.` },
+  { q: `Where does ${lake.name}'s level come from?`, a: `${SITE.name} pulls it from the ${feedLabel(reading?.feed) || 'operator'} public water-data feed${feedLabel(reading?.feed) === 'CDEC' ? ' (California Data Exchange)' : feedLabel(reading?.feed) === 'USBR' ? ' (U.S. Bureau of Reclamation)' : ''}. The reading is timestamped in the gauge above.${reading?.pct_source === 'twdb' ? ' Percent full comes from the Texas Water Development Board, which converts the same elevation into storage each day.' : ''}` },
   { q: `Who operates ${lake.name}?`, a: `${lake.name}, on the ${lake.river}, is operated by ${lake.operator}. Reservoir releases, flood-control drawdowns, and water-supply decisions are theirs.` },
 ];
 
@@ -86,7 +112,6 @@ const ld = [
 ];
 
 const related = LAKES.filter((l) => l.state === lake.state && l.slug !== slug).slice(0, 4);
-const affilWired = Object.values(AFFILIATES).some((v) => v !== 'REPLACE_ME');
 const toneHex = (t: string) => t === 'red' ? '#bb5a37' : t === 'amber' ? '#b07d1a' : '#0b7d6a';
 
 // Validated-data derived figures (the pipeline's first-party compute layer). Every
@@ -135,7 +160,7 @@ const feedNoun = feedLabel(reading?.feed) === 'CDEC' ? 'CDEC gage reading'
     <div style="padding-top:16px;">
       <h1>{lake.name} water level</h1>
       <p style="font-size:14px;color:var(--t2);margin-top:8px;">{lake.river} · {stName} · operated by {lake.operator}</p>
-      <p style="font-size:13px;color:var(--t2);margin-top:6px;">By <a href="/about/">Mike</a>, independent developer behind <a href="https://zovo.one" rel="noopener">zovo.one</a>. Readings pulled live from the same {feedLabel(reading?.feed) || 'USGS'} feed the operator reports to.</p>
+      <p style="font-size:13px;color:var(--t2);margin-top:6px;">By <a href="/about/">{AUTHOR.name}</a>, independent developer behind <a href="https://zovo.one" rel="noopener">zovo.one</a>. Readings pulled live from the same {feedLabel(reading?.feed) || 'USGS'} feed the operator reports to.</p>
     </div>
 
     {qas && <p class="qas" data-keyword={`${lake.name} water level`} style="font-size:15px;color:var(--t1);margin-top:14px;max-width:660px;font-weight:500;">{qas}</p>}
@@ -251,20 +276,14 @@ const feedNoun = feedLabel(reading?.feed) === 'CDEC' ? 'CDEC gage reading'
       </div>
     </section>
 
+    <AdSlot slot="lakeMid" />
+
     <div class="affil">
-      <h3>Going to {lake.name}?</h3>
-      {affilWired ? (
-        <>
-          <p>Book a guided fishing trip, rent a boat, or find a charter. Partners we earn a commission from at no cost to you.</p>
-          <div class="row">
-            {AFFILIATES.fishingbooker !== 'REPLACE_ME' && <a class="btn" href={AFFILIATES.fishingbooker} rel="sponsored nofollow noopener">Book a fishing charter</a>}
-            {AFFILIATES.captainExperiences !== 'REPLACE_ME' && <a class="btn ghost" href={AFFILIATES.captainExperiences} rel="sponsored nofollow noopener">Guided trips</a>}
-            {AFFILIATES.boatsetter !== 'REPLACE_ME' && <a class="btn ghost" href={AFFILIATES.boatsetter} rel="sponsored nofollow noopener">Rent a boat</a>}
-          </div>
-        </>
-      ) : (
-        <p class="mut" style="color:var(--t2);">Recreation-booking links (charters, boat rentals) appear here once partner accounts are wired. See <a href="/disclosure">the disclosure page</a>.</p>
-      )}
+      {/* Recreation affiliates: ready, not live. Uncomment after FishingBooker / Boatsetter
+          approve and the tracked links are in AFFILIATES (src/consts.ts).
+      <RecreationAffiliates name={lake.name} fbUrl={(lake as any).fb_url ?? null} />
+      */}
+      <p>Run a marina, guide service or boat rental at {lake.name}? Sponsor this page: one local business per lake, ${SPONSOR_PRICE_USD} a month, cancel any time. <a href="/advertise/">How it works</a> or email <a href={`mailto:${SPONSOR_EMAIL}?subject=${encodeURIComponent(`Sponsor ${lake.name} on LakeLevelNow`)}`}>{SPONSOR_EMAIL}</a>.</p>
     </div>
 
     <section class="section">
@@ -274,26 +293,13 @@ const feedNoun = feedLabel(reading?.feed) === 'CDEC' ? 'CDEC gage reading'
       </p>
     </section>
 
-    {/* Paid-guide strip. Deliberately sits below the gauge, the stat grid and the
-        provenance note, so the reading a visitor came for is delivered before
-        anything is offered. Purely additive: it is injected by cta.js and its
-        absence changes nothing above it. */}
-    <script
-      is:inline
-      src="/kit/cta.js"
-      data-mt-cta
-      data-tool="is-the-boat-ramp-usable"
-      data-href="https://theluckystrike.gumroad.com/l/is-the-boat-ramp-usable"
-      data-text="A two-hour tow can end at a slab that has been dry for years. Percent full is a volume. A ramp needs a height, and no percentage gives you one."
-      data-action="Read it - $9.99"
-      data-source="lakelevelnow-lake"
-      data-placement="inline"
-    ></script>
-
     <section class="section">
       <h2 style="margin-bottom:4px;">Questions about {lake.name}</h2>
       {faqs.map((f) => <div class="faq-item"><div class="q">{f.q}</div><div class="a">{f.a}</div></div>)}
+      <SupportLine variant="inline" />
     </section>
+
+    <AdSlot slot="lakeEnd" />
 
     {related.length > 0 && (
       <section class="section">

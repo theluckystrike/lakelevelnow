@@ -1,6 +1,7 @@
 ---
 // Global footer — dark slate, LakeLevelNow wordmark, zovo.one + GitHub, disclaimer.
-import { SITE, AFFILIATE_REPLACE_ME } from '../consts';
+import { SITE } from '../consts';
+import SupportLine from './SupportLine.astro';
 import { LAKES, freshLakes } from '../lib/lakes';
 const featured = freshLakes().slice(0, 6).map((x) => x.lake);
 const more = LAKES.slice(6, 14);
@@ -19,6 +20,7 @@ const GH = 'https://github.com/theluckystrike';
         <a href="/about">About</a>
         <a href="/lakes">All lakes</a>
         <a href="/disclosure">Disclosure</a>
+        <a href="/advertise/">Advertise</a>
         <a href={GH} rel="nofollow noopener">GitHub</a>
         <a href={ZOVO} rel="nofollow noopener">zovo.one</a>
         <a href={`mailto:${SITE.contactEmail}`}>Contact</a>
@@ -29,10 +31,9 @@ const GH = 'https://github.com/theluckystrike';
       {SITE.name} republishes public water-data from the USGS Water Services, the California Data Exchange (CDEC), the Bureau of Reclamation (USBR) and the Texas Water Development Board (TWDB).
       Levels are point-in-time readings and can lag real conditions; always confirm ramp and hazard status with the
       lake operator before you go on the water. Not affiliated with any government agency.
-      {AFFILIATE_REPLACE_ME
-        ? ' Recreation-affiliate links appear on lake pages once partner accounts are wired.'
-        : ' Some lake-page links are affiliate. See the disclosure page.'}
+      Lake pages may carry ads (not shown to visitors in the EEA, UK or Switzerland). See <a href="/disclosure" style="color:inherit;text-decoration:underline;">the disclosure page</a>.
     </p>
+    <SupportLine variant="footer" />
     <div class="copy">© {SITE.name} {year} · A <a href={ZOVO} rel="nofollow noopener" style="color:rgba(255,255,255,.4);text-decoration:underline;">zovo.one</a> site, built by one developer.</div>
   </div>
 

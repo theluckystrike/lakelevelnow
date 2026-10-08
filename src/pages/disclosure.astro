@@ -1,26 +1,35 @@
 ---
 import BaseLayout from '../layouts/BaseLayout.astro';
-import { SITE, AFFILIATES, AFFILIATE_REPLACE_ME } from '../consts';
+import { SITE, AFFILIATE_REPLACE_ME, SPONSOR_PRICE_USD } from '../consts';
 import { breadcrumbLd } from '../lib/seo';
-const title = 'Affiliate disclosure';
-const description = `${SITE.name} affiliate disclosure: which links earn a commission and how the site is supported.`;
+const title = 'Disclosure: ads, sponsors and affiliate links';
+const description = `How ${SITE.name} pays for itself: display ads outside Europe, one local sponsor per lake, reader support and affiliate links, and what each one collects.`;
 const ld = [breadcrumbLd([{ name: 'Home', path: '/' }, { name: 'Disclosure', path: '/disclosure' }])];
 ---
 <BaseLayout title={title} description={description} path="/disclosure" jsonLd={ld}>
   <div class="container">
     <article class="prose">
-      <h1>Affiliate disclosure</h1>
-      <p>{SITE.name} is a free, independent site. Some links on lake pages are affiliate links, which means if you book a charter, guided trip, or boat rental through them we may earn a commission at no extra cost to you. That keeps the site free and the data updating.</p>
+      <h1>Disclosure</h1>
+      <p>{SITE.name} is a free, independent site built by one person. It is paid for by display ads, one local sponsor per lake, readers who choose to chip in, and, once approved, affiliate links. None of them change a reading.</p>
 
-      <h2>Current status</h2>
+      <h2 id="ads">Display ads</h2>
+      <p>Lake pages can show up to two Google AdSense ads, always below the live gauge, never above it. They load only for visitors outside the European Economic Area, the UK and Switzerland. The page asks a small Cloudflare endpoint on our own Worker which country the request comes from, uses the answer for that page view only and stores nothing. If the country is in that region, unknown, or the lookup fails, no ad code loads at all. Where ads do load, Google and its partners may use cookies to serve and measure them; if your browser sends Global Privacy Control or Do Not Track, we ask Google for non-personalized ads. You can read how Google uses data at <a href="https://policies.google.com/technologies/partner-sites" rel="nofollow noopener">policies.google.com/technologies/partner-sites</a>.</p>
+
+      <h2 id="sponsors">Lake sponsors</h2>
+      <p>One local business per lake can sponsor that lake's page for ${SPONSOR_PRICE_USD} a month. A sponsored mention is labelled as sponsored and its link carries <code>rel="sponsored"</code>. Sponsors never see or influence the data. Details are on the <a href="/advertise/">advertise page</a>.</p>
+
+      <h2 id="affiliates">Affiliate links</h2>
       {AFFILIATE_REPLACE_ME ? (
-        <div class="callout a"><p><span class="em-strong">Affiliate links are not yet active.</span> The recreation-booking buttons on lake pages are placeholders while partner accounts (FishingBooker, Captain Experiences, Boatsetter) are being set up. No commission is earned yet, and no outbound affiliate link is live. This page and the buttons update automatically once tracked links are pasted into <code>src/consts.ts</code>.</p></div>
+        <p>No affiliate link is live on {SITE.name} today. If we add charter or boat-rental partners later, those links will be marked, carry <code>rel="sponsored nofollow"</code>, and earn us a commission at no cost to you.</p>
       ) : (
-        <p>Affiliate links are active on lake pages. Partners: FishingBooker, Captain Experiences, and Boatsetter.</p>
+        <p>Some lake-page links are affiliate links. If you book a charter or a boat rental through them, we may earn a commission at no extra cost to you. They carry <code>rel="sponsored nofollow"</code>.</p>
       )}
 
+      <h2 id="support">Reader support</h2>
+      <p>Some pages carry a "Chip in" button. It opens a Stripe payment page where you choose the amount. It is a one-off gift, not a subscription, and you get nothing extra for it besides our thanks.</p>
+
       <h2>Editorial independence</h2>
-      <p>The water-level data is never influenced by affiliate relationships. Readings come from USGS and CDEC public feeds and are shown the same way whether or not a lake page carries affiliate links. Levels and percent-full are not modified to favor any partner.</p>
+      <p>The water-level data is never influenced by ads, sponsors or affiliate relationships. Readings come from USGS, CDEC, USBR and TWDB public feeds and are shown the same way on every page. Levels and percent full are never modified to favor anyone.</p>
 
       <h2>Analytics and privacy</h2>
       <p>Updated 5 September 2026. We use Google Analytics 4 to measure visits, views of almanac offers, sample views, and checkout clicks. Google Analytics uses first-party cookies to distinguish browsers and sessions. Our events send public page paths and product identifiers, not email addresses, payment details, or anything entered into a tool. Page query strings and fragments are excluded. Google signals and advertising personalization are disabled. This tracking does not load when your browser sends Do Not Track or Global Privacy Control.</p>

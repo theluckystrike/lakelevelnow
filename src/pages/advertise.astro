@@ -1,0 +1,48 @@
+---
+import BaseLayout from '../layouts/BaseLayout.astro';
+import { SITE, SPONSOR_PRICE_USD, SPONSOR_EMAIL } from '../consts';
+import { LAKES, freshLakes } from '../lib/lakes';
+import { breadcrumbLd } from '../lib/seo';
+
+const title = `Sponsor a lake page: one local business per lake, $${SPONSOR_PRICE_USD} a month`;
+const description = `Put your marina, guide service or boat rental on the ${SITE.name} page for your lake. One sponsor per lake, $${SPONSOR_PRICE_USD} a month, cancel any time.`;
+const ld = [breadcrumbLd([{ name: 'Home', path: '/' }, { name: 'Advertise', path: '/advertise' }])];
+const liveCount = freshLakes().length;
+const sample = LAKES.find((l) => l.slug === 'pine-flat-lake') || LAKES[0];
+const mail = (subject: string) => `mailto:${SPONSOR_EMAIL}?subject=${encodeURIComponent(subject)}`;
+---
+<BaseLayout title={title} description={description} path="/advertise" jsonLd={ld}>
+  <div class="container">
+    <article class="prose">
+      <h1>Sponsor a lake page</h1>
+      <p>People open a {SITE.name} lake page for one reason: they are deciding whether to drive out to that lake. If you run a marina, a guide service or a boat rental there, that is the moment to be on the page.</p>
+
+      <h2>What you get</h2>
+      <ul>
+        <li>One short line on the page for your lake: your business name, one sentence you write, and a link to your site or booking page.</li>
+        <li>It sits in the box below the live gauge and the lake facts, so it is seen after the visitor has the reading they came for.</li>
+        <li>You are the only sponsor on that lake. No other marina or guide on the same page.</li>
+        <li>It is labelled as sponsored, and the link carries <code>rel="sponsored"</code>, as search engines require.</li>
+      </ul>
+
+      <h2>Price</h2>
+      <p><span class="em-strong">${SPONSOR_PRICE_USD} a month per lake</span>, billed monthly. Cancel any time and the line comes down at the end of the month you paid for. There is no setup fee and no contract.</p>
+
+      <h2>What it looks like</h2>
+      <div class="affil" style="margin-top:12px;">
+        <p><span class="em-strong">Sponsored:</span> Example Marina, {sample.name}. Slips, fuel and pontoon rentals, open daily. <a href="/advertise/" rel="sponsored">Book a slip</a></p>
+      </div>
+      <p style="font-size:13px;color:var(--t2);">Sample only. Your line replaces the sponsor invitation that sits in this box on your lake's page today.</p>
+
+      <h2>Which lakes</h2>
+      <p>Any of the {LAKES.length} lake pages. {liveCount} of them have a live gauge right now; the others show reference data and a link to the operator. If your lake is not listed, email anyway.</p>
+
+      <h2>What a sponsor cannot do</h2>
+      <p>Sponsors never see, change or influence the data. The level, percent full and ramp read come from public USGS, CDEC, USBR and TWDB feeds and are shown the same way on every page. See the <a href="/disclosure">disclosure page</a>.</p>
+
+      <h2>How to start</h2>
+      <p>Email <a href={mail('Sponsor a lake page on LakeLevelNow')}>{SPONSOR_EMAIL}</a> with the lake, your business name, the one sentence you want shown and the link. I reply with a payment link, and the line goes live within two days of payment.</p>
+      <p>Michael, {SITE.name}</p>
+    </article>
+  </div>
+</BaseLayout>

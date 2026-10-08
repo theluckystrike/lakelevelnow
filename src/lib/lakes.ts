@@ -24,6 +24,9 @@ export interface Reading {
   level_ft: number | null;
   storage_af: number | null;
   pct_full: number | null;
+  // Where pct_full came from ('cdec' | 'usbr' | 'twdb'). TWDB = Texas Water Development Board daily estimate.
+  pct_source?: string | null;
+  pct_as_of?: string | null;
   feet_from_full: number | null;
   param: string;
   delta_24h: number | null;

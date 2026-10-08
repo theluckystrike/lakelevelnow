@@ -198,6 +198,52 @@ async function fetchUSBR(siteName, capacity) {
   };
 }
 
+// ---- TWDB percent full (Texas) -------------------------------------------------
+// USGS gives Texas lakes an elevation but no storage, so pct_full stayed null and the
+// SERP's reference answer (TWDB's "Medina Lake: 28.7% full") never appeared in our title.
+// TWDB publishes a free daily CSV per reservoir. FAIL-CLOSED: any error, a missing
+// column, a non-finite or out-of-range value, or a TWDB date more than 3 days away from
+// the USGS reading yields null, and the page falls back to feet. TWDB is slow (9-22 s
+// measured), so one bounded attempt per lake, all fetched in parallel before the loop.
+const TWDB_NAMES = {
+  'lake-travis': 'travis',
+  'lake-buchanan': 'buchanan',
+  'medina-lake': 'medina',
+  'canyon-lake': 'canyon',
+  'lake-belton': 'belton',
+  'lake-somerville': 'somerville',
+  'lake-fork': 'fork',
+  'lake-whitney': 'whitney',
+};
+const TWDB_TIMEOUT_MS = 45000;
+const TWDB_MAX_GAP_DAYS = 3;
+
+async function fetchTWDBPct(name) {
+  const url = `https://www.waterdatafortexas.org/reservoirs/individual/${name}-30day.csv`;
+  const ac = new AbortController();
+  const timer = setTimeout(() => ac.abort(), TWDB_TIMEOUT_MS);
+  try {
+    const res = await fetch(url, { redirect: 'follow', signal: ac.signal, headers: { 'User-Agent': UA, Accept: 'text/csv,text/plain,*/*' } });
+    if (!res.ok) return null;
+    const rows = (await res.text()).split('\n').map((l) => l.trim()).filter((l) => l && !l.startsWith('#'));
+    if (rows.length < 2) return null;
+    const header = rows[0].split(',');
+    const iDate = header.indexOf('date');
+    const iPct = header.indexOf('percent_full');
+    if (iDate < 0 || iPct < 0) return null;
+    const last = rows[rows.length - 1].split(',');
+    if (last.length !== header.length) return null; // truncated body
+    const pct = Number(last[iPct]);
+    const date = String(last[iDate]);
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(date) || !Number.isFinite(pct) || pct < 0 || pct > 110) return null;
+    return { pct: Math.round(pct * 10) / 10, date };
+  } catch {
+    return null;
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
 // ---- load inputs (NASA rule 5: single source of truth) -----------------------
 const seed = JSON.parse(readFileSync(SEED_PATH, 'utf8'));
 const sourcesRaw = JSON.parse(readFileSync(SOURCES_PATH, 'utf8'));
@@ -247,6 +293,9 @@ function delta24(series) {
 }
 
 // ---- main --------------------------------------------------------------------
+const twdbPct = Object.fromEntries(
+  await Promise.all(Object.entries(TWDB_NAMES).map(async ([slug, name]) => [slug, await fetchTWDBPct(name)])),
+);
 const lakes = [];
 const levels = {};
 const health = [];
@@ -311,10 +360,24 @@ for (const lk of seed) {
     if (chosen.msl && lk.full_pool_ft && chosen.level_ft != null) {
       feet_from_full = Math.round((lk.full_pool_ft - chosen.level_ft) * 100) / 100;
     }
+    // TWDB percent full only for a fresh USGS reading, and only when both are within a
+    // few days of each other, so the title never pairs a stale percent with today's feet.
+    // A USGS reading never carries its own percent; a cached one may hold an old TWDB value.
+    let pctFull = src?.feed === 'usgs' ? null : (chosen.pct_full ?? null);
+    let pctSource = pctFull != null ? (src?.feed ?? null) : null;
+    let pctAsOf = null;
+    const tw = src?.feed === 'usgs' ? twdbPct[lk.slug] : null;
+    if (tw && chosenFresh && Math.abs(new Date(tw.date + 'T12:00:00Z').getTime() - new Date(chosen.as_of).getTime()) <= TWDB_MAX_GAP_DAYS * 86400000) {
+      pctFull = tw.pct;
+      pctSource = 'twdb';
+      pctAsOf = tw.date;
+    }
     levels[lk.slug] = {
       level_ft: chosen.level_ft,
       storage_af: chosen.storage_af ?? null,
-      pct_full: chosen.pct_full ?? null,
+      pct_full: pctFull,
+      pct_source: pctSource,
+      pct_as_of: pctAsOf,
       feet_from_full,
       param: chosen.param_label,
       delta_24h: chosen.delta_24h != null ? chosen.delta_24h : delta24(chosen.series),
@@ -324,6 +387,7 @@ for (const lk of seed) {
       fresh: !!chosenFresh,
       status,
     };
+    if (TWDB_NAMES[lk.slug]) process.stdout.write(`[TWDB ${pctSource === 'twdb' ? pctFull + '% @ ' + pctAsOf : 'none, feet only'}] `);
     console.log(
       `${chosenFresh ? '✓' : '·'} ${chosen.level_ft ?? (chosen.storage_af != null ? chosen.storage_af + ' AF' : '?')} ` +
       `(feed=${src?.feed}) @ ${String(chosen.as_of).slice(0, 10)} age=${ageDays(chosen.as_of).toFixed(1)}d [${status}]`

@@ -5,7 +5,12 @@ import { LAKES, freshLakes, byState, getReading, status, fmtNum, stateName } fro
 import { authorLd, breadcrumbLd } from '../lib/seo';
 import almanacData from '../data/almanac.json';
 
-const title = 'Live US lake & reservoir water levels';
+// Hand-tuned 2026-10-08 for "lake levels" / "current lake levels" (1,922 impressions, pos 18).
+// The count is the lakes that have a live percent-full reading today, never the registry size.
+const pctCount = freshLakes().filter((x) => x.reading.pct_full != null).length;
+const title = pctCount >= 5
+  ? `Lake levels today: live % full for ${pctCount} US reservoirs`
+  : 'Live US lake & reservoir water levels';
 const description = SITE.description;
 const fresh = freshLakes();
 const toneHex = (t: string) => t === 'red' ? '#bb5a37' : t === 'amber' ? '#b07d1a' : t === 'green' || t === 'cyan' ? '#0b7d6a' : '#8a949a';
@@ -117,20 +122,6 @@ const ALMANAC_SINGLE = import.meta.env.PUBLIC_ALMANAC_LINK_SINGLE || '';
         </div>
       </section>
     )}
-
-    {/* Paid-guide strip. Sits below the headline readings and the movers table so
-        the live data is delivered first. Injected by cta.js; purely additive. */}
-    <script
-      is:inline
-      src="/kit/cta.js"
-      data-mt-cta
-      data-tool="read-lake-levels-yourself"
-      data-href="https://theluckystrike.gumroad.com/l/read-lake-levels-yourself"
-      data-text="The same lake on the same day reads 1,064 feet, 42 feet, and 63 percent full. All three are correct. Only one of them answers your question."
-      data-action="Read it - $9.99"
-      data-source="lakelevelnow-home"
-      data-placement="inline"
-    ></script>
 
     <section class="section">
       <h2 style="margin-bottom:16px;">Browse by state</h2>

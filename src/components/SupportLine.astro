@@ -1,11 +1,14 @@
 ---
 // Pay-what-you-want support line (footer + end of each lake FAQ). Renders nothing until
-// support.url in src/data/monetization.json holds the Stripe Payment Link, so a missing
+// support.url in src/data/monetization.json holds the Stripe Payment Link or Gumroad product URL, so a missing
 // link never shows a dead button.
 import cfg from '../data/monetization.json';
 interface Props { variant?: 'footer' | 'inline' }
 const { variant = 'inline' } = Astro.props;
-const url = /^https:\/\/buy\.stripe\.com\/[A-Za-z0-9]+$/.test(cfg.support.url || '') ? cfg.support.url : '';
+const raw = cfg.support.url || '';
+const ok = /^https:\/\/buy\.stripe\.com\/[A-Za-z0-9]+$/.test(raw) || /^https:\/\/theluckystrike\.gumroad\.com\/l\/[a-z0-9-]+$/.test(raw);
+// Gumroad records a source only when utm_source, utm_medium and utm_campaign are all present.
+const url = !ok ? '' : raw.includes('gumroad.com') ? `${raw}?utm_source=lakelevelnow&utm_medium=${variant}&utm_campaign=support` : raw;
 ---
 {url && (
   <div class={`support-line ${variant}`}>

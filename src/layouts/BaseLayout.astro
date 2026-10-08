@@ -21,6 +21,9 @@ const ld = [organizationLd(), websiteLd(), ...jsonLd];
 <!DOCTYPE html>
 <html lang="en">
   <head>
+    {/* AdSense site ownership check. A meta tag only: it loads nothing and sets no cookie,
+        so it is safe for every region. The ad script itself is geo-gated in /ads-loader.js. */}
+    <meta name="google-adsense-account" content="ca-pub-2241192243363112" />
     <script is:inline defer src="/ga4.js" data-site="lakelevelnow" data-measurement-id="G-LYY6FMNH6R"></script>
     <BaseHead
       title={title}

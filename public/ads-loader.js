@@ -2,7 +2,10 @@
    Worker (lakelevelnow.lipmichal.workers.dev) reports a country outside the EEA, UK and
    Switzerland. GitHub Pages has no /cdn-cgi/trace, hence the Worker. Unknown, XX, T1, a timeout
    or a failed lookup count as EEA, so nothing loads and the slots collapse. Global Privacy
-   Control or Do Not Track asks Google for non-personalized ads. */
+   Control or Do Not Track asks Google for non-personalized ads.
+   Runs on lakelevelnow.com and www only: on localhost, 127.0.0.1 and the workers.dev preview no
+   ad request is made. A slot that Google reports as unfilled, or whose script fails to load,
+   is hidden so no empty "Advertisement" label is left behind. */
 (function () {
   'use strict';
   var w = window, d = document;
@@ -14,6 +17,12 @@
   var REGION = ('AT BE BG HR CY CZ DK EE FI FR DE GR HU IE IT LV LT LU MT NL PL PT RO SK SI ES SE ' +
     'IS LI NO GB CH AX GF GP MQ RE YT MF GG JE IM GI').split(' ');
   function collapse() { slots.forEach(function (s) { s.hidden = true; s.style.minHeight = '0'; }); }
+  function watch(box, ins) {
+    if (!w.MutationObserver) return;
+    new MutationObserver(function () {
+      if (ins.getAttribute('data-ad-status') === 'unfilled') box.hidden = true;
+    }).observe(ins, { attributes: true, attributeFilter: ['data-ad-status'] });
+  }
   function load(cc) {
     if (!cc || cc === 'XX' || cc === 'T1' || REGION.indexOf(cc) >= 0) return collapse();
     var client = slots[0].getAttribute('data-ad-client');
@@ -25,6 +34,7 @@
     s.async = true;
     s.crossOrigin = 'anonymous';
     s.src = 'https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=' + encodeURIComponent(client);
+    s.onerror = collapse;
     (d.head || d.documentElement).appendChild(s);
     slots.forEach(function (box) {
       var id = box.getAttribute('data-ad-slot-id');
@@ -38,9 +48,11 @@
       ins.setAttribute('data-full-width-responsive', 'true');
       box.hidden = false;
       box.appendChild(ins);
+      watch(box, ins);
       try { w.adsbygoogle.push({}); } catch (e) {}
     });
   }
+  if (!/^(www\.)?lakelevelnow\.com$/.test(location.hostname)) return collapse();
   if (!w.fetch) return collapse();
   var ctl = w.AbortController ? new AbortController() : null;
   var timer = setTimeout(function () { if (ctl) ctl.abort(); }, 4000);
